@@ -958,6 +958,26 @@ h2 {
     flex-grow: 1; /* Allow input to take available space */
 }
 
+/* Style for the Clear Completed button */
+.clear-completed-btn {
+    display: block; /* Make it block level */
+    width: calc(100% - 20px); /* Full width minus some padding */
+    margin: 15px auto 10px auto; /* Top margin, auto horizontal for centering, bottom margin */
+    padding: 10px 15px;
+    background-color: #5a5a5a; /* Dark grey button */
+    color: #e0e0e0;
+    border: 1px solid #666;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    text-align: center;
+    transition: background-color 0.2s ease;
+}
+
+.clear-completed-btn:hover {
+    background-color: #6a6a6a;
+}
+
 /* Utility class to hide elements */
 .hidden {
     display: none !important; /* Use !important to override potential inline styles if needed */

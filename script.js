@@ -858,6 +858,19 @@ function renderListContentStructure(list) {
         completedContainer.classList.add('list-container');
         completedContainer.id = `completedListContainer-${list.id}`;
         completedSection.appendChild(completedContainer);
+
+        // Add "Clear Completed" button inside the completed section
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Clear Completed Items';
+        clearBtn.classList.add('clear-completed-btn');
+        clearBtn.dataset.listId = list.id;
+        clearBtn.style.display = 'none'; // Initially hidden
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent potential event bubbling
+            clearCompletedItems(list.id);
+        });
+        completedSection.appendChild(clearBtn);
+        // Add completed section to the content div
         contentDiv.appendChild(completedSection);
         
         // Delete List Button
@@ -939,8 +952,11 @@ function renderItemsForList(listId, poppedItemId = null) {
     
     // Render completed items and handle section visibility
     const completedSection = completedContainer.closest('.completed-list'); 
+    const clearCompletedBtn = completedSection ? completedSection.querySelector('.clear-completed-btn') : null;
+
     if (completedItems.length > 0) {
         if (completedSection) completedSection.style.display = '';
+        if (clearCompletedBtn) clearCompletedBtn.style.display = ''; // Show button
         completedItems.forEach(item => {
             // Pass poppedItemId to createItemCard
             const card = createItemCard(item, listId, poppedItemId === item.id); 
@@ -951,6 +967,7 @@ function renderItemsForList(listId, poppedItemId = null) {
         });
     } else {
         if (completedSection) completedSection.style.display = 'none'; 
+        if (clearCompletedBtn) clearCompletedBtn.style.display = 'none'; // Hide button
     }
     // console.log(`[renderItemsForList] Finished rendering items for list: ${listId}`);
 }
@@ -1569,8 +1586,37 @@ function showCreateListInput(buttonElement) {
         }
     });
 
-    // --- Basic Cleanup Function (will be enhanced for cancel later) ---
+    // --- Logic for handling clicks outside the input container ---
+    const handleClickOutside = (event) => {
+        if (container && !container.contains(event.target) && event.target !== buttonElement) {
+            // Click was outside the temp container and not on the original button
+            // console.log("[handleClickOutside] Click detected outside temp input. Cleaning up.");
+            if (tempInputCleanup) {
+                tempInputCleanup();
+            }
+        }
+    };
+
+    // Add Escape listener to input and click outside listener to document
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            // console.log("[Escape Key] Detected. Cleaning up temp input.");
+            if (tempInputCleanup) {
+                tempInputCleanup();
+            }
+        }
+    });
+    // Add click listener AFTER a tiny delay to prevent the initial button click from triggering it immediately
+    setTimeout(() => {
+         document.addEventListener('click', handleClickOutside);
+         // console.log("[showCreateListInput] Added click outside listener.");
+    }, 0);
+
+
+    // --- Enhanced Cleanup Function --- 
     tempInputCleanup = () => {
+         document.removeEventListener('click', handleClickOutside); // REMOVE click listener
+         // console.log("[tempInputCleanup] Removed click outside listener.");
          if (container && container.parentNode) {
             container.remove();
          }
@@ -1598,6 +1644,26 @@ function handleCreateListFromTempInput(listName, inputContainer, originalButton)
              inputField.select(); // Select text for easy correction
          }
      }
+}
+
+// --- Clear Completed Items --- 
+function clearCompletedItems(listId) {
+    const list = shoppingLists[listId];
+    if (!list) { console.error(`[clearCompletedItems] List not found: ${listId}`); return; } // KEEP Error
+
+    const completedCount = list.items.filter(item => item.done).length;
+    if (completedCount === 0) {
+        alert("There are no completed items to clear.");
+        return;
+    }
+
+    if (confirm(`Are you sure you want to permanently delete all ${completedCount} completed items from this list?`)) {
+        // console.log(`[clearCompletedItems] Clearing ${completedCount} completed items from list ${listId}`);
+        // Keep only the items that are NOT done
+        list.items = list.items.filter(item => !item.done);
+        saveState();
+        renderItemsForList(listId);
+    }
 }
 
 // ==================================================
