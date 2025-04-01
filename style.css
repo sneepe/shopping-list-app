@@ -261,65 +261,97 @@ h2 {
 
 /* Item Card Styling */
 .item-card {
-    background-color: #4a4a4a;
-    padding: 8px; /* Default smaller padding */
-    border-radius: 8px; /* Slightly less rounding for smaller cards */
-    position: relative; /* Needed for positioning category change UI */
+    background-color: #3a3a3a;
+    padding: 12px;
+    border-radius: 12px;
+    position: relative;
     text-align: center;
     cursor: pointer;
-    transition: transform 0.2s ease, opacity 0.3s ease, background-color 0.3s ease, border-color 0.2s, box-shadow 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); 
-    word-wrap: break-word;
+    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    aspect-ratio: 1 / 1; 
+    aspect-ratio: 1 / 1;
     color: #e0e0e0;
-    border: 1px solid #555;
-    overflow: hidden; 
-    user-select: none; 
-    -webkit-user-select: none; 
-    -moz-user-select: none; 
-    -ms-user-select: none; 
+    border: 1px solid #444;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.item-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .item-card:hover {
-    transform: translateY(-3px);
-    border-color: #777;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Slightly enhance shadow on hover */
+    transform: translateY(-4px);
+    border-color: #666;
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Completed items have reduced opacity */
-.completed-list .item-card {
-     opacity: 0.6; 
+.item-card:hover::before {
+    opacity: 1;
 }
 
-.completed-list .item-card:hover {
-     opacity: 0.8;
+.item-card:active {
+    transform: translateY(-2px);
+}
+
+.item-card.done {
+    opacity: 0.7;
+    background-color: #2a2a2a;
+    border-color: #333;
+}
+
+.item-card.done .item-name {
+    text-decoration: line-through;
+    color: #888;
 }
 
 .item-name {
-    font-weight: bold;
-    margin-bottom: 5px;
-    font-size: 1em; /* Ensure consistent base size */
-    line-height: 1.2; /* Improve readability */
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 1.1em;
+    line-height: 1.3;
+    padding: 0 8px;
 }
 
 .item-details {
-    font-size: 0.8em;
+    font-size: 0.9em;
     color: #b0b0b0;
-    line-height: 1.1;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1.2;
 }
 
-/* Category colors adjusted for dark theme */
-.category-fruit { background-color: #5a994a; } /* Darker Green */
-.category-dairy { background-color: #4a7db1; } /* Darker Blue */
-.category-household { background-color: #666666; } /* Darker Gray */
-.category-meat { background-color: #b15a4a; } /* Darker Red */
-.category-snacks { background-color: #b1a04a; } /* Darker Yellow */
-.category-default { background-color: #4a4a4a; }
-
+/* Category colors with modern gradients */
+.category-fruit { 
+    background: linear-gradient(135deg, #5a994a, #4a7d3a);
+}
+.category-dairy { 
+    background: linear-gradient(135deg, #4a7db1, #3a6d91);
+}
+.category-household { 
+    background: linear-gradient(135deg, #666666, #555555);
+}
+.category-meat { 
+    background: linear-gradient(135deg, #b15a4a, #914a3a);
+}
+.category-snacks { 
+    background: linear-gradient(135deg, #b1a04a, #91903a);
+}
+.category-default { 
+    background: linear-gradient(135deg, #4a4a4a, #3a3a3a);
+}
 
 /* Delete List Button Styling */
 .delete-list-btn {
@@ -360,18 +392,17 @@ h2 {
     }
 
     .item-card {
-        padding: 8px; /* Keep small padding for mobile */
-        border-radius: 8px; 
+        padding: 10px;
+        border-radius: 10px;
     }
 
-    /* Adjust font sizes for smaller cards on mobile */
     .item-name {
-        font-size: 0.9em; 
-        margin-bottom: 3px;
+        font-size: 1em;
     }
 
     .item-details {
-        font-size: 0.7em;
+        font-size: 0.85em;
+        padding: 3px 6px;
     }
 
     .input-area {
