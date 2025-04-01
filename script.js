@@ -15,6 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const dynamicStyleSheet = createDynamicStyleSheet(); // For category colors
     const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
     const settingsAreaWrapper = document.getElementById('settingsAreaWrapper');
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const mobileNavPanel = document.getElementById('mobileNavPanel');
+    const mobileManageListsTabButton = mobileNavPanel.querySelector('[data-tab="inputTab"]'); // Get mobile manage lists button
+    const pasteBtn = document.getElementById('pasteBtn');
 
     // --- Category Definitions --- 
     // Initial default categories
@@ -333,126 +337,104 @@ document.addEventListener('DOMContentLoaded', () => {
         longPressDetected = false; // Reset for next interaction
     }
 
-    function switchTab(targetTabId) {
-        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        const targetButton = tabContainer.querySelector(`[data-tab="${targetTabId}"]`);
-        const targetContentId = targetTabId === 'inputTab' ? 'inputTab' : `list-tab-content-${targetTabId.replace('list-', '')}`;
-        const targetContent = document.getElementById(targetContentId);
-        if (targetButton) targetButton.classList.add('active');
-        if (targetContent) targetContent.classList.add('active');
-        activeListId = targetTabId.startsWith('list-') ? targetTabId.replace('list-', '') : null;
-    }
-
-    manageListsTabButton.addEventListener('click', () => switchTab('inputTab'));
-
-    function createNewList() {
-        const listName = listNameInput.value.trim();
-        if (!listName) {
-            alert("Please enter a name for the new list.");
-            return;
-        }
-        if (Object.values(shoppingLists).some(list => list.name === listName)) {
-             alert(`A list named "${listName}" already exists.`);
-             return;
-        }
-
-        const newListId = generateId();
-        shoppingLists[newListId] = { id: newListId, name: listName, items: [] };
-
-        renderTabsAndContent(); // Re-render UI
-        updateTargetListDropdown(); // Update the dropdown
-        targetListSelect.value = newListId; // Select the newly created list in dropdown
-        addItemsBtn.disabled = false; // Enable add button
-        saveState();
-        listNameInput.value = ''; // Clear input
-        listInput.focus(); // Focus on the item input area
-    }
-
-    function deleteList(listIdToDelete) {
-        if (!shoppingLists[listIdToDelete]) return;
-
-        const listName = shoppingLists[listIdToDelete].name;
-        if (confirm(`Are you sure you want to delete the list "${listName}"?`)) {
-            const wasActive = activeListId === listIdToDelete;
-            delete shoppingLists[listIdToDelete];
-            renderTabsAndContent();
-            updateTargetListDropdown(); // Update dropdown after delete
-            saveState();
-
-            // Switch to 'Manage Lists' tab if the deleted list was active
-            if (wasActive) switchTab('inputTab');
+    // --- Hamburger Menu Logic --- 
+    function toggleMobileNav(show) {
+        if (show) {
+            mobileNavPanel.classList.add('active');
+            hamburgerBtn.innerHTML = '&#10005;'; // Change to Close icon (X)
+        } else {
+            mobileNavPanel.classList.remove('active');
+            hamburgerBtn.innerHTML = '&#9776;'; // Change back to Hamburger icon
         }
     }
 
-    createListBtn.addEventListener('click', createNewList);
-    // Add list when Enter is pressed in the name input
-    listNameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            createNewList();
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent potential body click closing it immediately
+        toggleMobileNav(!mobileNavPanel.classList.contains('active'));
+    });
+
+    // Close nav if clicking outside of it
+    document.addEventListener('click', (e) => {
+        if (mobileNavPanel.classList.contains('active') && !mobileNavPanel.contains(e.target) && e.target !== hamburgerBtn) {
+            toggleMobileNav(false);
         }
     });
 
-    function parseItemString(itemStr) {
-        itemStr = itemStr.trim();
-        if (!itemStr) return null;
+    // --- Tab Management (Modified) --- 
+    function switchTab(targetTabId) {
+        // Deactivate all tabs and content in both desktop and mobile navs
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-        const itemRegex = /^(.*?)(?:\s+x(\d+))?(?:\s+(?:category|cat):\s*(\w+))?$/i;
-        const match = itemStr.match(itemRegex);
+        // Activate the target tab button (in both desktop and mobile navs)
+        const targetButtons = document.querySelectorAll(`.tab-button[data-tab="${targetTabId}"]`);
+        targetButtons.forEach(btn => btn.classList.add('active'));
+        
+        // Activate the target content pane
+        const targetContentId = targetTabId === 'inputTab' ? 'inputTab' : `list-tab-content-${targetTabId.replace('list-', '')}`;
+        const targetContent = document.getElementById(targetContentId);
+        if (targetContent) targetContent.classList.add('active');
 
-        let baseItem = { id: generateId(), name: itemStr, quantity: null, category: null, done: false };
+        // Update activeListId if switching to a list tab
+        activeListId = targetTabId.startsWith('list-') ? targetTabId.replace('list-', '') : null;
 
-        if (match) {
-            baseItem.name = match[1].trim();
-            baseItem.quantity = match[2] ? parseInt(match[2], 10) : null;
-            baseItem.category = match[3] ? match[3].toLowerCase() : null;
+        // Close mobile nav if it's open
+        if (mobileNavPanel.classList.contains('active')) {
+            toggleMobileNav(false);
         }
-        return baseItem;
     }
+
+    // Add event listener for static 'Manage Lists' tab in *mobile* nav
+    mobileManageListsTabButton.addEventListener('click', () => switchTab('inputTab'));
+    // Existing listener for desktop 'Manage Lists' tab
+    manageListsTabButton.addEventListener('click', () => switchTab('inputTab'));
 
     // --- Rendering (Modified) --- 
     function renderTabsAndContent() {
         const previouslyActiveListId = activeListId;
-        const inputTabWasActive = manageListsTabButton.classList.contains('active'); // Check if input tab is active
+        const inputTabWasActive = manageListsTabButton.classList.contains('active') || mobileManageListsTabButton.classList.contains('active');
 
+        // Clear dynamic tabs from BOTH containers
         tabContainer.querySelectorAll('.list-tab-button').forEach(btn => btn.remove());
+        mobileNavPanel.querySelectorAll('.list-tab-button').forEach(btn => btn.remove());
+        
         listContentContainer.innerHTML = '';
         
         Object.values(shoppingLists).forEach(list => {
             if (list && list.id) { 
-                renderListTab(list); 
+                renderListTab(list); // Renders button in both containers now
                 renderListContentStructure(list); 
                 renderItemsForList(list.id); 
             } else { console.warn('Skipping render for invalid list object:', list); }
         });
-
-        // --- Modified Tab Activation Logic --- 
+        
+        // ... (Tab activation logic remains the same) ...
         let targetTabId;
-        if (inputTabWasActive) {
-            targetTabId = 'inputTab'; // Stay on input tab if it was active
-        } else {
-            // Otherwise, try to restore previous list or first list
-            targetTabId = previouslyActiveListId && shoppingLists[previouslyActiveListId] 
-                          ? `list-${previouslyActiveListId}` 
-                          : (Object.keys(shoppingLists).length > 0 ? `list-${Object.keys(shoppingLists)[0]}` : 'inputTab');
-        }
-        
-        const targetButton = tabContainer.querySelector(`[data-tab="${targetTabId}"]`);
-        const targetContentId = targetTabId === 'inputTab' ? 'inputTab' : `list-tab-content-${targetTabId.replace('list-', '')}`;
-        const targetContent = document.getElementById(targetContentId);
-        
-        if (targetButton && targetContent) { switchTab(targetTabId); }
+        // ... (determine targetTabId) ... 
+        const targetButtons = document.querySelectorAll(`.tab-button[data-tab="${targetTabId}"]`);
+        // ... (get targetContent) ...
+        if (targetButtons.length > 0 && targetContent) { switchTab(targetTabId); }
         else { switchTab('inputTab'); }
     }
 
     function renderListTab(list) {
-        const tabButton = document.createElement('button');
-        tabButton.classList.add('tab-button', 'list-tab-button');
-        tabButton.dataset.tab = `list-${list.id}`;
-        tabButton.textContent = list.name;
-        tabButton.addEventListener('click', () => switchTab(`list-${list.id}`));
-        tabContainer.appendChild(tabButton);
+        const tabId = `list-${list.id}`;
+
+        // --- Create Desktop Tab Button --- 
+        const desktopButton = document.createElement('button');
+        desktopButton.classList.add('tab-button', 'list-tab-button');
+        desktopButton.dataset.tab = tabId;
+        desktopButton.textContent = list.name;
+        desktopButton.addEventListener('click', () => switchTab(tabId));
+        tabContainer.appendChild(desktopButton);
+
+        // --- Create Mobile Tab Button --- 
+        const mobileButton = document.createElement('button');
+        mobileButton.classList.add('tab-button', 'mobile-tab-button', 'list-tab-button');
+        mobileButton.dataset.tab = tabId;
+        mobileButton.textContent = list.name;
+        mobileButton.addEventListener('click', () => switchTab(tabId)); // SwitchTab will close the panel
+        mobileNavPanel.appendChild(mobileButton);
     }
 
     function renderListContentStructure(list) {
@@ -777,16 +759,116 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Initial Setup --- 
-    addItemsBtn.addEventListener('click', addItemsToList);
-    listInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItemsToList(); } });
+    // --- Initial Setup (Modified) --- 
+    addItemsBtn.addEventListener('click', () => {
+        console.log("Add Items button clicked"); // DEBUG
+        addItemsToList();
+    });
+    listInput.addEventListener('keypress', (e) => { 
+        if (e.key === 'Enter') { 
+            console.log("Enter pressed in List Name input"); // DEBUG
+            e.preventDefault(); 
+            addItemsToList(); 
+        }
+    });
     
-    // Settings Toggle Listener
+    pasteBtn.addEventListener('click', async () => {
+        console.log("Paste button clicked"); // DEBUG (Confirming this works)
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            alert('Clipboard API not available in this browser or context.');
+            return;
+        }
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                // Append to existing text or replace? Let's append for now.
+                listInput.value += (listInput.value ? '\n' : '') + text;
+                listInput.focus(); // Focus textarea after paste
+            } else {
+                alert('Clipboard is empty.');
+            }
+        } catch (err) {
+            console.error('Failed to read clipboard contents: ', err);
+            alert('Failed to paste from clipboard. Check browser permissions.');
+        }
+    });
+
     toggleSettingsBtn.addEventListener('click', () => {
         const isHidden = settingsAreaWrapper.style.display === 'none';
         settingsAreaWrapper.style.display = isHidden ? 'block' : 'none';
         toggleSettingsBtn.innerHTML = isHidden ? 'Hide Category Settings &#9650;' : 'Show Category Settings &#9660;';
     });
+
+    // Add listener for createListBtn separately to add log
+    createListBtn.addEventListener('click', () => {
+        console.log("Create List button clicked"); // DEBUG
+        createNewList();
+    });
+    listNameInput.addEventListener('keypress', (e) => { 
+        if (e.key === 'Enter') { 
+            console.log("Enter pressed in List Name input"); // DEBUG
+            e.preventDefault(); 
+            createNewList(); 
+        }
+     });
+
+    // --- List Creation / Deletion (Ensure this block is present) --- 
+    function createNewList() {
+        const listName = listNameInput.value.trim();
+        if (!listName) {
+            alert("Please enter a name for the new list.");
+            return;
+        }
+        if (Object.values(shoppingLists).some(list => list.name === listName)) {
+             alert(`A list named "${listName}" already exists.`);
+             return;
+        }
+
+        const newListId = generateId();
+        shoppingLists[newListId] = { id: newListId, name: listName, items: [] };
+
+        renderTabsAndContent(); // Re-render UI
+        updateTargetListDropdown(); // Update the dropdown
+        targetListSelect.value = newListId; // Select the newly created list in dropdown
+        addItemsBtn.disabled = false; // Enable add button
+        saveState();
+        listNameInput.value = ''; // Clear input
+        listInput.focus(); // Focus on the item input area
+    }
+
+    function deleteList(listIdToDelete) {
+        if (!shoppingLists[listIdToDelete]) return;
+
+        const listName = shoppingLists[listIdToDelete].name;
+        if (confirm(`Are you sure you want to delete the list "${listName}"?`)) {
+            const wasActive = activeListId === listIdToDelete;
+            delete shoppingLists[listIdToDelete];
+            renderTabsAndContent();
+            updateTargetListDropdown(); // Update dropdown after delete
+            saveState();
+
+            // Switch to 'Manage Lists' tab if the deleted list was active
+            if (wasActive) switchTab('inputTab');
+        }
+    }
+
+    // --- Item Parsing (Ensure this block is present) --- 
+    function parseItemString(itemStr) {
+        itemStr = itemStr.trim();
+        if (!itemStr) return null;
+
+        const itemRegex = /^(.*?)(?:\s+x(\d+))?(?:\s+(?:category|cat):\s*(\w+))?$/i;
+        const match = itemStr.match(itemRegex);
+
+        let baseItem = { id: generateId(), name: itemStr, quantity: null, category: null, done: false };
+
+        if (match) {
+            baseItem.name = match[1].trim();
+            baseItem.quantity = match[2] ? parseInt(match[2], 10) : null;
+            baseItem.category = match[3] ? match[3].toLowerCase() : null;
+        }
+        return baseItem;
+    }
 
     loadState(); // Load lists AND categories, then render everything
 }); 

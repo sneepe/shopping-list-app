@@ -10,9 +10,16 @@
     <div class="container">
         <h1>Multi-List Shopper</h1>
 
-        <div class="tabs" id="tabContainer">
+        <button id="hamburgerBtn" class="hamburger-btn">&#9776;</button> <!-- Hamburger Icon -->
+
+        <div class="tabs desktop-tabs" id="tabContainer">
             <button class="tab-button active" data-tab="inputTab">Manage Lists</button>
-            <!-- Dynamic list tabs will be inserted here -->
+            <!-- Dynamic list tabs will be inserted here for desktop -->
+        </div>
+
+        <div class="mobile-nav" id="mobileNavPanel">
+             <button class="tab-button mobile-tab-button active" data-tab="inputTab">Manage Lists</button>
+             <!-- Dynamic list tabs will be inserted here for mobile -->
         </div>
 
         <!-- Static Tab: Manage Lists -->
@@ -32,7 +39,10 @@
                 </select>
                 <textarea id="listInput" placeholder="Paste items here...
 e.g., Milk x2 cat:dairy, Apples cat:fruit"></textarea>
-                <button id="addItemsBtn" disabled>Add to Selected List</button> 
+                <div class="button-group">
+                    <button id="pasteBtn" class="paste-btn mobile-only-btn" title="Paste from Clipboard">Paste</button> 
+                    <button id="addItemsBtn" disabled>Add to Selected List</button> 
+                </div>
             </div>
 
             <div class="instructions">

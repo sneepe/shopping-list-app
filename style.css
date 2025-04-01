@@ -15,6 +15,7 @@ body {
     border-radius: 10px; /* Slightly rounder */
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5); /* Adjusted shadow */
     border: 1px solid #444; /* Subtle border */
+    position: relative; /* Needed for absolute positioning of children */
 }
 
 h1 {
@@ -57,12 +58,23 @@ h1 {
 
 /* Tab Content Styling */
 .tab-content {
-    display: none; /* Hide all tabs by default */
-    padding-top: 20px; /* Add space between tabs and content */
+    padding-top: 20px; 
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0s linear 0.3s; /* Fade opacity, hide visibility after fade */
+    position: absolute; /* Allow stacking/fading without layout jumps */
+    width: calc(100% - 40px); /* Match container padding */
+    left: 20px; /* Match container padding */
+    background-color: #2c2c2c; /* Match container bg to prevent seeing through */
 }
 
 .tab-content.active {
-    display: block; /* Show only the active tab */
+    opacity: 1;
+    visibility: visible;
+    position: relative; /* Take up space when active */
+    width: auto; /* Reset width */
+    left: auto; /* Reset position */
+    transition-delay: 0s; /* Ensure visibility appears immediately */
 }
 
 /* Input Area Styling */
@@ -103,34 +115,54 @@ h1 {
     resize: vertical; /* Re-enable vertical resizing */
 }
 
-#createListBtn, 
+.button-group {
+    display: flex;
+    flex-basis: 150px; /* Initial basis matching old button */
+    flex-grow: 0;
+    gap: 5px; /* Gap between buttons if needed */
+}
+
+.paste-btn,
 #addItemsBtn {
-    padding: 10px 15px;
-    background-color: #6ab04c; /* Adjusted green */
-    color: #1a1a1a; /* Dark text on button */
+    padding: 8px 10px; /* Reduced padding */
+    background-color: #6ab04c; 
+    color: #1a1a1a; 
     font-weight: bold;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    /* align-self: flex-start; Removed, alignment handled by container */
     transition: background-color 0.2s;
-    height: 40px; /* Match default input height */
+    height: 40px; 
+    flex-grow: 1; /* Allow buttons in group to grow */
+    font-size: 0.85em; /* Slightly smaller font */
+    line-height: 1.2; /* Adjust line height for better vertical centering */
 }
 
-#addItemsBtn {
-     flex-basis: 150px; 
-     flex-grow: 0;
-     /* No align-self needed, should align top by default */
-     height: 40px; /* Keep fixed height for button */
+.paste-btn {
+    background-color: #5a5a5a; /* Different color for paste */
+    color: #e0e0e0;
+    display: none; /* Hidden by default */
+}
+
+.paste-btn:hover {
+     background-color: #6a6a6a;
 }
 
 #createListBtn {
-    height: auto; /* Allow create button height to be natural */
+    padding: 10px 15px;
+    background-color: #6ab04c;
+    color: #1a1a1a;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    height: 40px; /* Match other inputs/buttons */
+    flex-shrink: 0; /* Prevent shrinking if space is tight initially */
 }
 
-#addItemsBtn:disabled {
-    background-color: #555;
-    cursor: not-allowed;
+#createListBtn:hover {
+    background-color: #82c963;
 }
 
 /* Responsive adjustments for select */
@@ -148,6 +180,15 @@ h1 {
      .input-area.add-items-section {
         flex-wrap: nowrap; 
         align-items: flex-start; /* Ensure top alignment */
+    }
+    .paste-btn {
+        display: none !important; /* Ensure paste btn is hidden on desktop */
+    }
+    #addItemsBtn {
+       flex-grow: 0; /* Don't let add button grow on desktop */
+    }
+    .button-group {
+         flex-basis: 150px; /* Keep fixed basis for the group */
     }
 }
 
@@ -351,21 +392,20 @@ h2 {
         margin-bottom: 10px; /* Ensure spacing when stacked */
     }
     
-    .input-area.add-items-section #addItemsBtn {
-        width: 100%; /* Make button full width */
-        flex-basis: auto; /* Reset basis for mobile */
-        margin-bottom: 0; 
+    .input-area.add-items-section .button-group {
+        display: contents; /* Remove the group's flex layout, treat children as direct children of input-area */
     }
 
-    /* Ensure other input areas also stack correctly if needed */
-    .input-area #listNameInput,
-    .input-area #createListBtn {
-         flex-basis: 100%;
-         width: 100%;
-         margin-bottom: 10px;
+    .paste-btn,
+    .input-area.add-items-section #addItemsBtn {
+        display: block; /* Make buttons block level */
+        width: 100%; /* Make buttons full width */
+        flex-basis: auto; /* Reset basis */
+        margin-bottom: 10px; /* Add margin between stacked buttons */
     }
-    .input-area #createListBtn {
-         margin-bottom: 0; /* No margin after last button in its group */
+    
+    .input-area.add-items-section #addItemsBtn {
+         margin-bottom: 0; /* No margin after the last button */
     }
 
     .delete-list-btn {
@@ -375,6 +415,18 @@ h2 {
         font-size: 1em;
         margin-top: 25px;
     }
+
+    /* Ensure other input areas also stack correctly if needed */
+    .input-area #listNameInput {
+        flex-basis: 100%;
+        width: 100%;
+        margin-bottom: 10px;
+   }
+   .input-area #createListBtn {
+        flex-basis: 100%;
+        width: 100%;
+        margin-bottom: 0; /* Reset margin if needed */
+   }
 } 
 
 .change-category-btn {
@@ -586,5 +638,91 @@ h2 {
         width: 100%;
         margin-top: 10px;
         margin-right: 0;
+    }
+} 
+
+/* Hamburger Button */
+.hamburger-btn {
+    display: none; /* Hidden on desktop */
+    position: absolute; /* Or fixed depending on desired behavior */
+    top: 25px; /* Adjust as needed */
+    right: 20px; /* Adjust as needed */
+    font-size: 24px;
+    background: none;
+    border: none;
+    color: #e0e0e0;
+    cursor: pointer;
+    z-index: 1001; /* Above nav panel */
+}
+
+/* Desktop Tabs */
+.tabs.desktop-tabs {
+    display: flex; /* Default display for desktop */
+    flex-wrap: wrap; 
+    margin-bottom: 20px;
+    border-bottom: 1px solid #555; 
+}
+
+/* Mobile Nav Panel */
+.mobile-nav {
+    display: none; /* Hidden by default */
+    position: fixed; /* Or absolute */
+    top: 0;
+    right: 0;
+    width: 250px; /* Adjust width */
+    height: 100%;
+    background-color: #333; /* Slightly darker than container */
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    padding: 60px 20px 20px 20px; /* Padding top for close button space */
+    z-index: 1000;
+    overflow-y: auto; /* Allow scrolling if many lists */
+    transition: transform 0.3s ease-in-out;
+    transform: translateX(100%); /* Start off-screen */
+}
+
+.mobile-nav.active {
+    display: block; /* Make it visible */
+    transform: translateX(0); /* Slide in */
+}
+
+.mobile-nav .tab-button {
+    display: block; /* Stack buttons vertically */
+    width: 100%;
+    text-align: left;
+    padding: 12px 15px;
+    border-bottom: 1px solid #444;
+    color: #ccc;
+    font-size: 1em;
+    background: none;
+}
+
+.mobile-nav .tab-button.active {
+    background-color: #4a4a4a;
+    color: #fff;
+    font-weight: bold;
+    border-bottom-color: #4a4a4a;
+}
+
+.mobile-nav .tab-button:hover {
+    background-color: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .tabs.desktop-tabs {
+        display: none; /* Hide desktop tabs on mobile */
+    }
+
+    .hamburger-btn {
+        display: block; /* Show hamburger on mobile */
+    }
+
+    .mobile-nav {
+        /* display: block; Already handled by JS adding 'active' class */
+    }
+    
+    /* Adjust container padding if needed to avoid overlap */
+    .container {
+       padding-top: 60px; /* Add padding if hamburger is positioned absolutely */
     }
 } 
