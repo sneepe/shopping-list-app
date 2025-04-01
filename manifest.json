@@ -2,7 +2,7 @@
   "name": "Handleliste",
   "short_name": "Handleliste",
   "description": "A simple shopping list application.",
-  "start_url": "/index.html",
+  "start_url": "/shopping-list-app/index.html",
   "display": "standalone",
   "background_color": "#2a2a2a",
   "theme_color": "#333333",
