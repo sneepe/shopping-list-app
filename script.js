@@ -90,26 +90,52 @@ document.addEventListener('DOMContentLoaded', () => {
          addItemsBtn.disabled = !targetListSelect.value; // Enable/disable on change
     });
 
+    // --- Long Press / Touch Handling --- 
+    let pressTimer = null;
+    let longPressDetected = false;
+    const LONG_PRESS_DURATION = 700; // milliseconds
+
+    function handlePointerDown(event, listId, itemId) {
+        // Check if it's a completed item card
+        const card = event.target.closest('.item-card');
+        if (!card || !card.closest('.completed-list')) return;
+
+        longPressDetected = false;
+        pressTimer = setTimeout(() => {
+            longPressDetected = true;
+            // Optionally add visual feedback for long press start (e.g., slight scale)
+            card.style.transform = 'scale(0.95)'; 
+            if (confirm(`Permanently delete item "${shoppingLists[listId].items.find(i => i.id === itemId)?.name}"?`)) {
+                deleteItem(listId, itemId);
+            }
+             // Reset style even if cancelled
+            setTimeout(() => { card.style.transform = 'scale(1)'; }, 150); 
+        }, LONG_PRESS_DURATION);
+    }
+
+    function handlePointerUpOrLeave(event) {
+        const card = event.target.closest('.item-card');
+        clearTimeout(pressTimer);
+        pressTimer = null;
+        if (card) card.style.transform = 'scale(1)'; // Reset style
+        // Important: Prevent click toggle if long press happened
+        if (longPressDetected) {
+            event.preventDefault(); 
+            event.stopPropagation();
+        }
+        longPressDetected = false; // Reset for next interaction
+    }
+
     // --- Tab Management --- 
     function switchTab(targetTabId) {
-        // Deactivate all tabs and content
         document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-        // Activate the target tab button and content
         const targetButton = tabContainer.querySelector(`[data-tab="${targetTabId}"]`);
         const targetContentId = targetTabId === 'inputTab' ? 'inputTab' : `list-tab-content-${targetTabId.replace('list-', '')}`;
         const targetContent = document.getElementById(targetContentId);
-        
         if (targetButton) targetButton.classList.add('active');
         if (targetContent) targetContent.classList.add('active');
-
-        // Update activeListId if switching to a list tab
-        if (targetTabId.startsWith('list-')) {
-            activeListId = targetTabId.replace('list-', '');
-        } else {
-            activeListId = null;
-        }
+        activeListId = targetTabId.startsWith('list-') ? targetTabId.replace('list-', '') : null;
     }
 
     // Add event listener for static 'Manage Lists' tab
@@ -144,15 +170,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const listName = shoppingLists[listIdToDelete].name;
         if (confirm(`Are you sure you want to delete the list "${listName}"?`)) {
+            const wasActive = activeListId === listIdToDelete;
             delete shoppingLists[listIdToDelete];
             renderTabsAndContent();
             updateTargetListDropdown(); // Update dropdown after delete
             saveLists();
 
             // Switch to 'Manage Lists' tab if the deleted list was active
-            if (activeListId === listIdToDelete) {
-                switchTab('inputTab');
-            }
+            if (wasActive) switchTab('inputTab');
         }
     }
 
@@ -185,19 +210,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Rendering --- 
     function renderTabsAndContent() {
-        // Clear dynamic tabs (keep 'Manage Lists') and all list content
+        const previouslyActiveListId = activeListId;
         tabContainer.querySelectorAll('.list-tab-button').forEach(btn => btn.remove());
+        
+        // console.log('Before clear:', listContentContainer.innerHTML); // DEBUG
         listContentContainer.innerHTML = '';
+        // console.log('After clear:', listContentContainer.innerHTML); // DEBUG
 
-        // Create tabs and content for each list
+        // Create tabs and content structure for each list
         Object.values(shoppingLists).forEach(list => {
-            renderListTab(list);
-            renderListContent(list);
+            // *** ADDED CHECK *** Ensure list and list.id are valid
+            if (list && list.id) { 
+                renderListTab(list); 
+                renderListContentStructure(list); 
+                renderItemsForList(list.id); 
+            } else {
+                console.warn('Skipping render for invalid list object:', list); // DEBUG
+            }
         });
         
         // Restore active tab state if possible
-        const targetTabId = activeListId ? `list-${activeListId}` : 'inputTab';
-        switchTab(targetTabId);
+        const targetTabId = previouslyActiveListId && shoppingLists[previouslyActiveListId] 
+                          ? `list-${previouslyActiveListId}` 
+                          : (Object.keys(shoppingLists).length > 0 ? `list-${Object.keys(shoppingLists)[0]}` : 'inputTab');
+
+        // Ensure the target elements exist before switching
+        const targetButton = tabContainer.querySelector(`[data-tab="${targetTabId}"]`);
+        const targetContentId = targetTabId === 'inputTab' ? 'inputTab' : `list-tab-content-${targetTabId.replace('list-', '')}`;
+        const targetContent = document.getElementById(targetContentId);
+        
+        if (targetButton && targetContent) {
+             switchTab(targetTabId);
+        } else {
+            // Fallback to input tab if the intended tab doesn't exist (e.g., after delete)
+            switchTab('inputTab');
+        }
     }
 
     function renderListTab(list) {
@@ -209,109 +256,166 @@ document.addEventListener('DOMContentLoaded', () => {
         tabContainer.appendChild(tabButton);
     }
 
-    function renderListContent(list) {
-        const contentDiv = document.createElement('div');
-        contentDiv.id = `list-tab-content-${list.id}`;
-        contentDiv.classList.add('tab-content', 'list-tab'); // Add 'list-tab' for potential specific styling
+    // NEW function to create only the list content structure
+    function renderListContentStructure(list) {
+        let contentDiv = document.getElementById(`list-tab-content-${list.id}`);
+        
+        if (!contentDiv) { 
+            console.log(`Creating structure for list: ${list.name} (${list.id})`); // DEBUG
+            contentDiv = document.createElement('div');
+            contentDiv.id = `list-tab-content-${list.id}`;
+            contentDiv.classList.add('tab-content', 'list-tab');
+            
+            const heading = document.createElement('h2');
+            heading.textContent = list.name;
+            contentDiv.appendChild(heading);
 
-        const heading = document.createElement('h2');
-        heading.textContent = list.name;
+            // Active Items Section Structure
+            const activeSection = document.createElement('div');
+            activeSection.classList.add('list-section', 'active-list');
+            const activeHeading = document.createElement('h3'); // Create heading explicitly
+            activeHeading.textContent = 'Active Items';
+            activeSection.appendChild(activeHeading);
+            const activeContainer = document.createElement('div');
+            activeContainer.classList.add('list-container');
+            activeContainer.id = `activeListContainer-${list.id}`;
+            activeSection.appendChild(activeContainer);
+            contentDiv.appendChild(activeSection);
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.classList.add('delete-list-btn');
-        deleteBtn.dataset.listId = list.id;
-        deleteBtn.textContent = 'Delete List';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent tab switch if clicking delete button
-            deleteList(list.id);
-        });
-        heading.appendChild(deleteBtn);
+            // Completed Items Section Structure
+            const completedSection = document.createElement('div');
+            completedSection.classList.add('list-section', 'completed-list');
+             const completedHeading = document.createElement('h3'); // Create heading explicitly
+            completedHeading.textContent = 'Completed Items';
+            completedSection.appendChild(completedHeading);
+            const completedContainer = document.createElement('div');
+            completedContainer.classList.add('list-container');
+            completedContainer.id = `completedListContainer-${list.id}`;
+            completedSection.appendChild(completedContainer);
+            contentDiv.appendChild(completedSection);
+            
+            // Delete Button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.classList.add('delete-list-btn');
+            deleteBtn.dataset.listId = list.id;
+            deleteBtn.textContent = 'Delete List';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                deleteList(list.id);
+            });
+            contentDiv.appendChild(deleteBtn);
 
-        contentDiv.appendChild(heading);
-
-        // Active Items Section
-        const activeSection = document.createElement('div');
-        activeSection.classList.add('list-section', 'active-list');
-        activeSection.innerHTML = '<h3>Active Items</h3>';
-        const activeContainer = document.createElement('div');
-        activeContainer.classList.add('list-container');
-        activeContainer.id = `activeListContainer-${list.id}`;
-        activeSection.appendChild(activeContainer);
-        contentDiv.appendChild(activeSection);
-
-        // Completed Items Section
-        const completedSection = document.createElement('div');
-        completedSection.classList.add('list-section', 'completed-list');
-        completedSection.innerHTML = '<h3>Completed Items</h3>';
-        const completedContainer = document.createElement('div');
-        completedContainer.classList.add('list-container');
-        completedContainer.id = `completedListContainer-${list.id}`;
-        completedSection.appendChild(completedContainer);
-        contentDiv.appendChild(completedSection);
-
-        listContentContainer.appendChild(contentDiv);
-
-        // Render items into the newly created containers
-        renderItemsForList(list.id);
+            listContentContainer.appendChild(contentDiv);
+        } else {
+             console.log(`Structure already exists for list: ${list.name} (${list.id})`); // DEBUG
+        }
     }
-
+    
+    // UPDATED function to only render items into existing containers
     function renderItemsForList(listId) {
         const list = shoppingLists[listId];
         if (!list) return;
+        
+        // Ensure the structure exists before trying to render items
+        // renderListContentStructure(list); // <-- REMOVE THIS LINE
 
         const activeContainer = document.getElementById(`activeListContainer-${listId}`);
         const completedContainer = document.getElementById(`completedListContainer-${listId}`);
+        
+        if (!activeContainer || !completedContainer) {
+            console.error(`Containers not found for list ${listId} during item render.`);
+            return; // Structure should exist, but safety check
+        }
 
-        if (!activeContainer || !completedContainer) return; // Safety check
+        activeContainer.innerHTML = ''; // Clear previous active items
+        completedContainer.innerHTML = ''; // Clear previous completed items
 
-        activeContainer.innerHTML = '';
-        completedContainer.innerHTML = '';
+        // Group active items by category
+        const activeItems = list.items.filter(item => !item.done);
+        const completedItems = list.items.filter(item => item.done);
 
-        list.items.forEach(item => {
-            const card = createItemCard(item, listId);
-            if (item.done) {
-                completedContainer.appendChild(card);
-            } else {
-                activeContainer.appendChild(card);
+        const groupedActiveItems = activeItems.reduce((acc, item) => {
+            const categoryKey = item.category || 'default';
+            if (!acc[categoryKey]) acc[categoryKey] = [];
+            acc[categoryKey].push(item);
+            return acc;
+        }, {});
+
+        const categoryOrder = ['fruit', 'dairy', 'meat', 'pantry', 'frozen', 'household', 'snacks', 'default'];
+        let activeItemsRendered = false;
+        categoryOrder.forEach(categoryKey => {
+            if (groupedActiveItems[categoryKey]) {
+                activeItemsRendered = true;
+                const categoryConfig = CATEGORY_CONFIG[categoryKey];
+                const categoryHeader = document.createElement('div');
+                categoryHeader.classList.add('category-header');
+                categoryHeader.textContent = categoryConfig.name; 
+                activeContainer.appendChild(categoryHeader);
+                groupedActiveItems[categoryKey].forEach(item => {
+                    const card = createItemCard(item, listId);
+                    activeContainer.appendChild(card);
+                });
             }
         });
+        
+        // Optionally hide the 'Active Items' H3 if no active items exist
+        const activeSectionHeading = activeContainer.parentElement.querySelector('h3');
+        if(activeSectionHeading) activeSectionHeading.style.display = activeItemsRendered ? 'block' : 'none';
+
+        // Render completed items
+        let completedItemsRendered = false;
+        completedItems.forEach(item => {
+            completedItemsRendered = true;
+            const card = createItemCard(item, listId);
+            completedContainer.appendChild(card);
+        });
+
+        // Optionally hide the 'Completed Items' H3 if no completed items exist
+        const completedSectionHeading = completedContainer.parentElement.querySelector('h3');
+        if(completedSectionHeading) completedSectionHeading.style.display = completedItemsRendered ? 'block' : 'none';
     }
 
     // --- Card Creation --- 
-    function createItemCard(item, listId) { // Pass listId
+    function createItemCard(item, listId) { 
         const card = document.createElement('div');
         card.classList.add('item-card');
-        card.dataset.itemId = item.id; // Use item's unique ID
-        card.dataset.listId = listId; // Store list ID for the click handler
-
+        card.dataset.itemId = item.id; 
+        card.dataset.listId = listId; 
         const categoryInfo = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.default;
         card.classList.add(categoryInfo.class);
-
-        // Opacity is handled by parent container (.completed-list .item-card) in CSS now
-        // if (item.done) {
-        //     card.style.opacity = '0.6';
-        // }
-
+        
         const nameSpan = document.createElement('span');
         nameSpan.classList.add('item-name');
         nameSpan.textContent = item.name;
         card.appendChild(nameSpan);
-
+        
         const detailsSpan = document.createElement('span');
         detailsSpan.classList.add('item-details');
         let detailsText = '';
-        if (item.quantity) {
-            detailsText += `Qty: ${item.quantity}`;
-        }
+        if (item.quantity) detailsText += `Qty: ${item.quantity}`;
         detailsSpan.textContent = detailsText;
-        if (detailsText) {
-            card.appendChild(detailsSpan);
-        }
+        if (detailsText) card.appendChild(detailsSpan);
 
-        // --- Event Listener for Click --- 
-        card.addEventListener('click', () => {
-            toggleItemDone(listId, item.id); // Pass both IDs
+        // Regular click toggles 'done' state
+        card.addEventListener('click', (e) => {
+             if (longPressDetected) {
+                 // Prevent toggle if long press just finished
+                 e.preventDefault();
+                 e.stopPropagation();
+                 return;
+             }
+            toggleItemDone(listId, item.id); 
         });
+
+        // Add long-press listeners ONLY to completed items for deletion
+        if (item.done) {
+            // Use pointer events for better touch & mouse compatibility
+            card.addEventListener('pointerdown', (e) => handlePointerDown(e, listId, item.id));
+            card.addEventListener('pointerup', handlePointerUpOrLeave);
+            card.addEventListener('pointerleave', handlePointerUpOrLeave); 
+            // Add touch-action to prevent scrolling while holding on mobile
+            card.style.touchAction = 'none';
+        }
 
         return card;
     }
@@ -370,6 +474,17 @@ document.addEventListener('DOMContentLoaded', () => {
             renderItemsForList(listId); // Re-render items for this specific list
             saveLists(); 
         }
+    }
+
+    function deleteItem(listId, itemId) {
+         const list = shoppingLists[listId];
+         if (!list) return;
+         const itemIndex = list.items.findIndex(item => item.id === itemId);
+         if (itemIndex > -1) {
+             list.items.splice(itemIndex, 1); // Remove item from array
+             renderItemsForList(listId); // Re-render the list
+             saveLists(); // Save changes
+         }       
     }
 
     // --- Populate Category List --- 

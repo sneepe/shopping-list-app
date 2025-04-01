@@ -12,8 +12,8 @@ body {
     margin: auto;
     background: #2c2c2c; /* Slightly lighter dark background */
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); /* Adjusted shadow for dark */
+    border-radius: 10px; /* Slightly rounder */
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5); /* Adjusted shadow */
     border: 1px solid #444; /* Subtle border */
 }
 
@@ -192,9 +192,26 @@ h1 {
 /* List Container Styling */
 .list-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 15px;
-    /* margin-top: 20px; Removed as spacing handled by list-section */
+    /* Aim for 2 columns on larger screens */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px; /* Increased gap for bigger cards */
+}
+
+/* Styling for category sections within the active list */
+.category-section {
+    /* If a category needs its own container */
+    margin-bottom: 20px;
+    grid-column: 1 / -1; /* Make category header span full width */
+}
+
+.category-header {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #c0c0c0;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #555;
+    grid-column: 1 / -1; /* Span all columns */
 }
 
 h2 {
@@ -205,26 +222,29 @@ h2 {
 
 /* Item Card Styling */
 .item-card {
-    background-color: #4a4a4a; /* Darker card background */
-    padding: 15px;
-    border-radius: 8px;
+    background-color: #4a4a4a;
+    padding: 15px; /* Adjusted padding slightly */
+    border-radius: 10px; /* Slightly rounder */
     text-align: center;
     cursor: pointer;
-    transition: transform 0.2s ease, opacity 0.3s ease, background-color 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s ease, opacity 0.3s ease, background-color 0.3s ease, border-color 0.2s, box-shadow 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); /* Softer shadow */
     word-wrap: break-word;
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 80px;
-    color: #e0e0e0; /* Light text on card */
-    border: 1px solid #555; /* Subtle border */
+    /* min-height: 100px; Removed - aspect ratio handles size */
+    aspect-ratio: 1 / 1; /* Make it square */
+    color: #e0e0e0;
+    border: 1px solid #555;
+    overflow: hidden; /* Prevent content spillover */
 }
 
 .item-card:hover {
     transform: translateY(-3px);
     border-color: #777;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Slightly enhance shadow on hover */
 }
 
 /* Completed items have reduced opacity */
@@ -239,11 +259,14 @@ h2 {
 .item-name {
     font-weight: bold;
     margin-bottom: 5px;
+    font-size: 1em; /* Ensure consistent base size */
+    line-height: 1.2; /* Improve readability */
 }
 
 .item-details {
     font-size: 0.8em;
-    color: #b0b0b0; /* Lighter gray for details */
+    color: #b0b0b0;
+    line-height: 1.1;
 }
 
 /* Category colors adjusted for dark theme */
@@ -257,22 +280,22 @@ h2 {
 
 /* Delete List Button Styling */
 .delete-list-btn {
-    background-color: #c94c4c; /* Reddish color */
+    display: block; /* Make it a block element */
+    width: fit-content; /* Size to content */
+    margin: 30px auto 10px auto; /* Center it with margins */
+    background-color: #c94c4c;
     color: #fff;
     border: none;
-    padding: 5px 10px;
+    padding: 8px 15px; /* Adjusted padding */
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8em;
-    float: right; /* Position it nicely */
-    margin-left: 10px;
+    font-size: 0.9em; /* Adjusted font size */
     transition: background-color 0.2s;
 }
 
 .delete-list-btn:hover {
     background-color: #e06c6c;
 }
-
 
 /* Mobile responsiveness */
 @media (max-width: 600px) {
@@ -288,13 +311,14 @@ h2 {
     }
 
     .list-container {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 10px;
+        /* Switch to 1 column on small screens */
+        grid-template-columns: repeat(1, 1fr);
+        gap: 15px;
     }
 
     .item-card {
-        padding: 10px;
-        min-height: 70px;
+        padding: 15px 10px; /* Adjust padding for smaller cards */
+        min-height: 80px; /* Adjust min height */
     }
 
     .input-area {
@@ -313,9 +337,10 @@ h2 {
     }
 
     .delete-list-btn {
-        float: none;
-        display: block;
-        margin-top: 10px;
-        text-align: center;
+        /* Ensures it's centered and reasonably sized */
+        width: auto;
+        padding: 10px 20px;
+        font-size: 1em;
+        margin-top: 25px;
     }
 } 
