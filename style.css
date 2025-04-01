@@ -726,3 +726,91 @@ h2 {
        padding-top: 60px; /* Add padding if hamburger is positioned absolutely */
     }
 } 
+
+/* Single Item Add Section within List Tab */
+.add-single-item-section {
+    /* flex-wrap: wrap; Removed - aim for single line */
+    align-items: center; /* Vertically center items on the line */
+    border: 1px solid #444;
+    padding: 10px 15px;
+    border-radius: 5px;
+    background-color: #333; 
+    margin-bottom: 25px; /* Space below single add */
+    gap: 8px; /* Reduced gap */
+}
+
+.add-single-item-section h3 {
+    /* Removed - no header in this version */
+}
+
+/* Use classes now instead of IDs */
+.add-single-item-section .single-item-name-input,
+.add-single-item-section .single-item-qty-input,
+.add-single-item-section .single-item-category-select,
+.add-single-item-section .add-single-item-btn {
+    margin-bottom: 0; /* No margin when inline */
+    height: 36px; /* Slightly smaller height */
+    box-sizing: border-box;
+    font-size: 0.9em;
+    /* Add dark theme styles */
+    background-color: #4a4a4a;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.add-single-item-section .single-item-name-input {
+    flex: 3 1 150px; 
+}
+
+.add-single-item-section .single-item-qty-input {
+     flex: 1 1 50px; /* Reduced basis */
+     max-width: 70px; 
+}
+
+.add-single-item-section .single-item-category-select {
+     flex: 2 1 100px; /* Reduced basis */
+    padding: 0 5px; /* Adjust padding for select */
+}
+
+.add-single-item-section .add-single-item-btn {
+    padding: 0 12px; /* Adjust padding */
+    background-color: #6ab04c;
+    color: #1a1a1a;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-shrink: 0; 
+    font-size: 1.2em; /* Make + bigger */
+    line-height: 34px; /* Align text */
+}
+
+.add-single-item-section .add-single-item-btn:hover {
+    background-color: #82c963;
+}
+
+/* Mobile adjustments for single add */
+@media (max-width: 600px) {
+    .add-single-item-section {
+        flex-wrap: wrap; /* Allow wrapping on mobile */
+        align-items: stretch; /* Stretch items vertically */
+        padding: 10px;
+    }
+    .add-single-item-section input,
+    .add-single-item-section select,
+    .add-single-item-section button {
+        flex-basis: 48% !important; /* Try two items per row */
+        width: 48%;
+        margin-bottom: 10px; 
+        font-size: 0.9em;
+    }
+    .add-single-item-section .add-single-item-btn {
+         flex-basis: 100% !important; /* Make button full width on last row */
+         width: 100%;
+         margin-bottom: 0; 
+         font-size: 1em; /* Reset font size */
+         padding: 10px 15px;
+    }
+} 

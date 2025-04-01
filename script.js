@@ -42,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const LISTS_STORAGE_KEY = 'shoppingLists';
     const CATEGORY_STORAGE_KEY = 'categoryConfig';
 
+    // Modified cache structure: { lowerCaseName: { original: 'Original Case Name', category: 'categoryKey' } }
+    let knownItems = {}; 
+
     function saveState() {
         localStorage.setItem(LISTS_STORAGE_KEY, JSON.stringify(shoppingLists));
         localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(currentCategoryConfig));
@@ -51,38 +54,62 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Load Categories FIRST --- 
         const savedCategories = localStorage.getItem(CATEGORY_STORAGE_KEY);
         currentCategoryConfig = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); // Deep copy defaults
-        // Always ensure 'default' category exists
         if (!currentCategoryConfig.default) {
             currentCategoryConfig.default = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES.default));
         }
 
-        // --- Load Lists SECOND --- 
-        const savedLists = localStorage.getItem(LISTS_STORAGE_KEY);
-        shoppingLists = savedLists ? JSON.parse(savedLists) : {};
+        // --- Load Lists SECOND (Always from storage) --- 
+        const savedListsString = localStorage.getItem(LISTS_STORAGE_KEY);
+        shoppingLists = savedListsString ? JSON.parse(savedListsString) : {};
+        // Validate loaded lists (existing code)
         Object.values(shoppingLists).forEach(list => {
             list.items.forEach(item => {
                 if (!item.id) item.id = generateId();
-                // *** Now the check is safe ***
                 if (item.category && !currentCategoryConfig[item.category]) {
                     console.warn(`Item "${item.name}" had invalid category "${item.category}", reverting to default.`);
-                    item.category = null; // Revert to default
+                    item.category = null;
                 }
             });
         });
-
-        // --- Apply Styles & Render UI --- 
-        applyCategoryStyles(); 
-        renderTabsAndContent();
-        updateTargetListDropdown(); 
-        renderCategorySettings(); 
-        populateCategoryGuide(); 
-
-        // Activate first list or input tab
-        const firstListId = Object.keys(shoppingLists)[0];
-        if (firstListId) switchTab(`list-${firstListId}`);
-        else switchTab('inputTab');
+        
+        // Start the rest of the sequence (cache building, rendering)
+        continueLoadSequence(); 
     }
     
+    // Encapsulate the rest of the loading/rendering sequence
+    function continueLoadSequence() {
+        buildKnownItemsCacheFromStorage(); // Build cache from user's lists first
+
+        // Fetch default items to add them to suggestions cache
+        fetch('defaultItems.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(defaultItemsData => {
+                addDefaultItemsToCache(defaultItemsData);
+            })
+            .catch(error => {
+                console.warn('Could not load defaultItems.json for suggestions:', error);
+            })
+            .finally(() => {
+                 // --- Render UI AFTER cache is potentially populated with defaults --- 
+                applyCategoryStyles(); 
+                renderTabsAndContent();
+                updateTargetListDropdown(); 
+                renderCategorySettings(); 
+                populateCategoryGuide(); 
+
+                // Activate first list or input tab
+                const sortedListIds = Object.keys(shoppingLists).sort((a, b) => shoppingLists[a].name.localeCompare(shoppingLists[b].name));
+                const firstListId = sortedListIds[0];
+                if (firstListId) switchTab(`list-${firstListId}`);
+                else switchTab('inputTab');
+            });
+    }
+
     // --- ID Generation --- 
     function generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -296,10 +323,96 @@ document.addEventListener('DOMContentLoaded', () => {
         populateCategoryGuide();
         renderCategorySettings(); // Re-render settings to reflect saved state (e.g., make keys readonly again)
         renderTabsAndContent(); // Re-render lists as item categories might have changed
-        saveState(); // Save both lists and new category config
+        // Repopulate *all* list-specific selects
+        document.querySelectorAll('.single-item-category-select').forEach(select => {
+             populateSingleItemCategorySelect(select);
+        });
+        buildKnownItemsCacheFromStorage(); // Rebuild cache in case item categories were affected
+        saveState();
+
+        // Rebuild cache completely after settings change
+        buildKnownItemsCacheFromStorage();
+        fetch('defaultItems.json') // Re-fetch defaults too
+           .then(res => res.ok ? res.json() : Promise.reject('Fetch failed'))
+           .then(data => addDefaultItemsToCache(data))
+           .catch(err => console.warn('Could not reload defaults for cache:', err))
+           .finally(() => {
+                // Re-render tabs might be needed if categories affect display? Render safe
+                renderTabsAndContent(); 
+           });
 
         alert("Category settings saved!");
     });
+
+    // --- Single Item Add --- 
+    function populateSingleItemCategorySelect(selectElement) {
+        if (!selectElement) return;
+        const currentVal = selectElement.value;
+        selectElement.innerHTML = '<option value="">Category</option>'; // Simplified placeholder
+        const sortedKeys = Object.keys(currentCategoryConfig)
+            .filter(key => key !== 'default') 
+            .sort((a, b) => currentCategoryConfig[a].name.localeCompare(currentCategoryConfig[b].name));
+        
+        sortedKeys.forEach(key => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = currentCategoryConfig[key].name;
+            selectElement.appendChild(option);
+        });
+        const defaultOption = document.createElement('option');
+        defaultOption.value = ''; 
+        defaultOption.textContent = currentCategoryConfig.default.name;
+        selectElement.appendChild(defaultOption);
+        
+        selectElement.value = currentVal;
+    }
+
+    function addSingleItem(listId, nameInput, qtyInput, categorySelect) {
+        const itemName = nameInput.value.trim();
+        
+        // listId is now passed directly
+        if (!listId) { console.error("addSingleItem called without listId"); return; }
+        if (!itemName) { alert("Please enter an item name."); nameInput.focus(); return; }
+        if (!shoppingLists[listId]) { alert("Target list not found."); return; }
+        
+        const qtyValue = qtyInput.value.trim();
+        const quantity = qtyValue ? parseInt(qtyValue, 10) : null;
+        if (quantity !== null && (isNaN(quantity) || quantity < 1)) {
+             alert("Quantity must be a positive number.");
+             qtyInput.focus();
+             return;
+        }
+
+        const category = categorySelect.value || null; 
+        
+        const newItem = { id: generateId(), name: itemName, quantity: quantity, category: category, done: false };
+        
+        const exists = shoppingLists[listId].items.some(existingItem => 
+            existingItem.name === newItem.name && 
+            existingItem.category === newItem.category && 
+            existingItem.quantity === newItem.quantity &&
+            !existingItem.done 
+        );
+        
+        if (exists) {
+            if (!confirm(`Item "${itemName}" seems to already be on the active list. Add anyway?`)) {
+                return;
+            }
+        }
+        
+        shoppingLists[listId].items.push(newItem);
+        updateKnownItem(newItem); // Update autocomplete cache with the new item
+        renderItemsForList(listId);
+        saveState();
+        
+        // Clear inputs specific to this list
+        nameInput.value = '';
+        qtyInput.value = '';
+        categorySelect.value = '';
+        nameInput.focus();
+        
+        // No need to switch tab, already on it
+    }
 
     // --- ID Generation, Long Press, Tab Management, List Create/Delete, Item Parsing --- 
     let pressTimer = null;
@@ -400,9 +513,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         listContentContainer.innerHTML = '';
         
-        Object.values(shoppingLists).forEach(list => {
+        // --- Sort lists by name before rendering --- 
+        const sortedLists = Object.values(shoppingLists).sort((a, b) => a.name.localeCompare(b.name));
+
+        // Render sorted lists
+        sortedLists.forEach(list => {
+        // Object.values(shoppingLists).forEach(list => { // Old way
             if (list && list.id) { 
-                renderListTab(list); // Renders button in both containers now
+                renderListTab(list); 
                 renderListContentStructure(list); 
                 renderItemsForList(list.id); 
             } else { console.warn('Skipping render for invalid list object:', list); }
@@ -410,9 +528,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // ... (Tab activation logic remains the same) ...
         let targetTabId;
-        // ... (determine targetTabId) ... 
+        // ... (determine targetTabId based on previouslyActiveListId, inputTabWasActive, etc.) ...
+        if (inputTabWasActive) {
+            targetTabId = 'inputTab';
+        } else {
+            targetTabId = previouslyActiveListId && shoppingLists[previouslyActiveListId] 
+                          ? `list-${previouslyActiveListId}` 
+                          : (Object.keys(shoppingLists).length > 0 ? `list-${sortedLists[0]?.id}` : 'inputTab'); // Use sortedLists[0] if activating first list
+        }
+        
         const targetButtons = document.querySelectorAll(`.tab-button[data-tab="${targetTabId}"]`);
-        // ... (get targetContent) ...
+        const targetContentId = targetTabId === 'inputTab' ? 'inputTab' : `list-tab-content-${targetTabId.replace('list-', '')}`;
+        const targetContent = document.getElementById(targetContentId);
+        
         if (targetButtons.length > 0 && targetContent) { switchTab(targetTabId); }
         else { switchTab('inputTab'); }
     }
@@ -439,16 +567,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderListContentStructure(list) {
         let contentDiv = document.getElementById(`list-tab-content-${list.id}`);
-        
         if (!contentDiv) { 
-            console.log(`Creating structure for list: ${list.name} (${list.id})`); // DEBUG
             contentDiv = document.createElement('div');
             contentDiv.id = `list-tab-content-${list.id}`;
             contentDiv.classList.add('tab-content', 'list-tab');
-            
             const heading = document.createElement('h2');
             heading.textContent = list.name;
             contentDiv.appendChild(heading);
+
+            // --- Create Single Item Add Section --- 
+            const singleAddSection = document.createElement('div');
+            singleAddSection.classList.add('input-area', 'add-single-item-section');
+            singleAddSection.dataset.listId = list.id; // Associate with list
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Item Name';
+            nameInput.required = true;
+            nameInput.classList.add('single-item-name-input');
+            nameInput.setAttribute('list', `itemSuggestions-${list.id}`); 
+            singleAddSection.appendChild(nameInput);
+
+            const datalist = document.createElement('datalist');
+            datalist.id = `itemSuggestions-${list.id}`;
+            populateItemDatalist(datalist); // Populate it with items from cache
+            singleAddSection.appendChild(datalist);
+
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.placeholder = 'Qty';
+            qtyInput.min = '1';
+            qtyInput.style.maxWidth = '70px'; // Keep style from example
+            qtyInput.classList.add('single-item-qty-input');
+            singleAddSection.appendChild(qtyInput);
+
+            const categorySelect = document.createElement('select');
+            categorySelect.classList.add('single-item-category-select');
+            populateSingleItemCategorySelect(categorySelect); // Populate this specific select
+            singleAddSection.appendChild(categorySelect);
+
+            const addButton = document.createElement('button');
+            addButton.textContent = '+';
+            addButton.title = 'Add Item';
+            addButton.classList.add('add-single-item-btn');
+            // Add listener to *this* button, passing references
+            addButton.addEventListener('click', () => {
+                addSingleItem(list.id, nameInput, qtyInput, categorySelect);
+            });
+
+            // --- Modified Input Listener --- 
+            nameInput.addEventListener('input', (e) => {
+                const enteredNameLower = e.target.value.toLowerCase();
+                const knownData = knownItems[enteredNameLower]; // Check cache using lowercase
+                
+                if (knownData !== undefined) { 
+                    // Prefill category based on cached data for the exact match
+                    categorySelect.value = knownData.category === null ? '' : knownData.category;
+                } else {
+                    // Optional: Reset category if name doesn't match anything known
+                    // categorySelect.value = ''; 
+                }
+                // NOTE: We don't manually filter the datalist here.
+                // The browser uses the input value to filter the <option>s in the linked <datalist> automatically.
+            });
+
+            // Also add via Enter key in name input for this section
+            nameInput.addEventListener('keypress', (e) => {
+                 if (e.key === 'Enter') {
+                     e.preventDefault();
+                     addSingleItem(list.id, nameInput, qtyInput, categorySelect);
+                 }
+             });
+            singleAddSection.appendChild(addButton);
+            // --- End Single Item Add Section --- 
+
+            contentDiv.appendChild(singleAddSection); // Add section below heading
 
             // Active Items Section Structure
             const activeSection = document.createElement('div');
@@ -669,12 +862,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const exists = currentList.items.some(existingItem => 
                 existingItem.name === newItem.name && 
                 existingItem.category === newItem.category && 
-                existingItem.quantity === newItem.quantity
+                existingItem.quantity === newItem.quantity &&
+                !existingItem.done // Added check for done status
             );
             if (!exists) {
                 currentList.items.push(newItem);
+                updateKnownItem(newItem); // <<< ADD THIS LINE
                 addedCount++;
-            }
+            } else {
+                 console.log(`Skipping duplicate item from paste: ${newItem.name}`); // Optional log
+             }
         });
 
         if (addedCount > 0) {
@@ -870,5 +1067,99 @@ document.addEventListener('DOMContentLoaded', () => {
         return baseItem;
     }
 
-    loadState(); // Load lists AND categories, then render everything
+    // --- Autocomplete Cache (Split) --- 
+    // Renamed function: Builds cache ONLY from lists in localStorage
+    function buildKnownItemsCacheFromStorage() {
+        knownItems = {}; // Reset cache
+        Object.values(shoppingLists).forEach(list => {
+            list.items.forEach(item => {
+                if (item.name) { 
+                    const lowerCaseName = item.name.toLowerCase();
+                    if (!knownItems[lowerCaseName] || item.category !== null) { 
+                         knownItems[lowerCaseName] = { 
+                             original: item.name, 
+                             category: item.category || null 
+                         };
+                    } else if (!knownItems[lowerCaseName].category && item.category === null) {
+                        // Keep existing casing if no category info gained
+                    }
+                 }
+            });
+        });
+         console.log("Built Known Items Cache (From Storage):", JSON.parse(JSON.stringify(knownItems))); // DEBUG
+    }
+    
+    // New function: Adds default items to cache IF they don't already exist from storage
+    function addDefaultItemsToCache(defaultItems) {
+         if (!Array.isArray(defaultItems)) {
+             console.warn("Default items data is not an array, skipping.", defaultItems);
+             return;
+         }
+         let defaultsAdded = 0;
+         defaultItems.forEach(item => {
+             if (item.name) {
+                 const lowerCaseName = item.name.toLowerCase();
+                 // Only add if this item name wasn't already loaded from user lists
+                 if (!knownItems[lowerCaseName]) { 
+                     knownItems[lowerCaseName] = {
+                         original: item.name,
+                         category: item.category || null
+                     };
+                     defaultsAdded++;
+                 }
+             }
+         });
+         console.log(`Added ${defaultsAdded} default items to suggestion cache.`);
+         // After adding defaults, repopulate datalists
+         document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
+             populateItemDatalist(datalist);
+         });
+    }
+
+    // Modified to use new cache structure and check for existence
+    function updateKnownItem(item) {
+        if (item.name) {
+            const lowerCaseName = item.name.toLowerCase();
+            let needsDatalistUpdate = false;
+            // Update if it doesn't exist OR if the new item provides category info where previous didn't
+             if (!knownItems[lowerCaseName] || (knownItems[lowerCaseName].category === null && item.category !== null)) {
+                 knownItems[lowerCaseName] = { 
+                     original: item.name, 
+                     category: item.category || null 
+                 };
+                 needsDatalistUpdate = true; // New item added or updated, refresh suggestions
+             } else if (knownItems[lowerCaseName].category !== null && item.category !== null && knownItems[lowerCaseName].category !== item.category) {
+                 // Optional: Update category if user explicitly sets a different one? Debatable. Let's keep last known for now.
+                 // knownItems[lowerCaseName].category = item.category;
+             } else if (knownItems[lowerCaseName].category !== null && item.category === null) {
+                 // Don't overwrite an existing category with null
+             }
+
+             // Update relevant datalists only if the cache actually changed
+             if (needsDatalistUpdate) {
+                 document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
+                     populateItemDatalist(datalist);
+                 });
+             }
+         }
+    }
+
+    // Modified to use new cache structure
+    function populateItemDatalist(datalistElement) {
+        if (!datalistElement) return;
+        datalistElement.innerHTML = ''; // Clear old suggestions
+        // Sort known items alphabetically by original name for consistent dropdown order
+        const sortedKeys = Object.keys(knownItems).sort((a, b) => 
+            knownItems[a].original.localeCompare(knownItems[b].original)
+        );
+
+        sortedKeys.forEach(itemNameKey => {
+            const option = document.createElement('option');
+            option.value = knownItems[itemNameKey].original; // Use original case for the suggestion value
+            // Browsers typically display the 'value' in the datalist suggestion
+            datalistElement.appendChild(option);
+        });
+    }
+
+    loadState(); // Start the loading process
 }); 
