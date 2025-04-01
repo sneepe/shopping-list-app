@@ -426,9 +426,7 @@ h2 {
 
 /* Mobile responsiveness */
 @media (max-width: 600px) {
-    .tabs {
-        /* flex-wrap is already set */
-    }
+
     .tab-button {
         padding: 8px 12px;
         font-size: 0.9em;
@@ -457,9 +455,7 @@ h2 {
         padding: 3px 6px;
     }
 
-    .input-area {
-        /* flex-direction: column; Remove this if present, rely on wrapping */
-    }
+
     
     /* Apply to the specific section containing the dropdown */
     .input-area.add-items-section #targetListSelect,
@@ -580,10 +576,7 @@ h2 {
     background-color: #5a5a5a;
 }
 
-.settings-area-wrapper {
-    /* Container is hidden/shown by JS */
-    /* No specific styles needed unless for spacing/transitions later */
-}
+
 
 .settings-section {
     margin-top: 0; /* Reset margin as wrapper handles spacing */
@@ -793,9 +786,7 @@ h2 {
         display: block; /* Show hamburger on mobile */
     }
 
-    .mobile-nav {
-        /* display: block; Already handled by JS adding 'active' class */
-    }
+
     
     /* Adjust container padding if needed to avoid overlap */
     .container {
@@ -815,9 +806,7 @@ h2 {
     gap: 8px; /* Reduced gap */
 }
 
-.add-single-item-section h3 {
-    /* Removed - no header in this version */
-}
+
 
 /* Use classes now instead of IDs */
 .add-single-item-section .single-item-name-input,
