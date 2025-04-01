@@ -234,6 +234,8 @@ h1 {
     /* Use 5 columns by default for desktop */
     grid-template-columns: repeat(5, 1fr);
     gap: 10px; /* Default gap for 5 columns */
+    position: relative;
+    min-height: 100px; /* Ensure container has height even when empty */
 }
 
 /* Styling for category sections within the active list */
@@ -261,13 +263,13 @@ h2 {
 
 /* Item Card Styling */
 .item-card {
-    background-color: #3a3a3a;
+    background-color: var(--category-color);
     padding: 12px;
     border-radius: 12px;
     position: relative;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    /* transition: all 0.3s ease; */ /* <-- COMMENT OUT THIS LINE */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -277,7 +279,75 @@ h2 {
     border: 1px solid #444;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.3s ease;
 }
+
+/* Animation for items moving between categories */
+@keyframes shrinkOut {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Add animation classes */
+.item-card.shrinking-out {
+    /* Use a slightly longer duration for easier debugging */
+    animation: shrinkOut 0.3s forwards;
+    pointer-events: none; 
+    transition: none !important; /* Override base transition */
+    will-change: transform, opacity; /* Hint for animation */
+}
+
+.item-card.popping-in {
+    /* Match duration or make slightly longer */
+    animation: popIn 0.3s forwards;
+    transform-origin: center center; 
+    transition: none !important; /* Override base transition */
+    will-change: transform, opacity; /* Hint for animation */
+}
+
+/* Ensure list containers have proper positioning */
+.list-container {
+    position: relative;
+    min-height: 100px;
+}
+
+/* Ensure completed section has proper positioning */
+.completed-list {
+    position: relative;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+}
+
+.completed-list .list-container {
+    position: relative;
+    min-height: 100px;
+}
+
+/* Category colors */
+.category-fruit { --category-color: #5a994a; }
+.category-dairy { --category-color: #4a7db1; }
+.category-household { --category-color: #666666; }
+.category-meat { --category-color: #b15a4a; }
+.category-snacks { --category-color: #b1a04a; }
+.category-default { --category-color: #4a4a4a; }
 
 .item-card::before {
     content: '';
@@ -306,14 +376,16 @@ h2 {
 }
 
 .item-card.done {
-    opacity: 0.7;
-    background-color: #2a2a2a;
-    border-color: #333;
+    /* Keep original category color but make it darker */
+    /* background-color: #6c757d; /* Old grey background */
+    filter: brightness(0.6) grayscale(0.2);
+    text-decoration: line-through;
+    color: #adb5bd; /* Lighter text for contrast on dark background */
 }
 
-.item-card.done .item-name {
-    text-decoration: line-through;
-    color: #888;
+.item-card.done:hover {
+     /* Slightly less dark on hover */
+    filter: brightness(0.7) grayscale(0.1);
 }
 
 .item-name {
@@ -331,26 +403,6 @@ h2 {
     padding: 4px 8px;
     border-radius: 6px;
     line-height: 1.2;
-}
-
-/* Category colors with modern gradients */
-.category-fruit { 
-    background: linear-gradient(135deg, #5a994a, #4a7d3a);
-}
-.category-dairy { 
-    background: linear-gradient(135deg, #4a7db1, #3a6d91);
-}
-.category-household { 
-    background: linear-gradient(135deg, #666666, #555555);
-}
-.category-meat { 
-    background: linear-gradient(135deg, #b15a4a, #914a3a);
-}
-.category-snacks { 
-    background: linear-gradient(135deg, #b1a04a, #91903a);
-}
-.category-default { 
-    background: linear-gradient(135deg, #4a4a4a, #3a3a3a);
 }
 
 /* Delete List Button Styling */
