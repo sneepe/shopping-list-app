@@ -45,6 +45,22 @@ e.g., Milk x2 cat:dairy, Apples cat:fruit"></textarea>
                     <!-- Categories will be listed here by JS -->
                 </ul>
             </div>
+
+            <hr style="border-color: #444; margin: 30px 0 20px 0;">
+
+            <button id="toggleSettingsBtn" class="settings-toggle-btn">Show Category Settings &#9660;</button>
+
+            <div class="settings-area-wrapper" id="settingsAreaWrapper" style="display: none;">
+                <div class="settings-section">
+                    <h2>Category Settings</h2>
+                    <div id="categorySettingsContainer">
+                        <!-- Category settings rows will be added here by JS -->
+                    </div>
+                    <button id="addNewCategoryBtn" class="settings-btn">+ Add New Category</button>
+                    <button id="saveSettingsBtn" class="settings-btn">Save Category Settings</button>
+                </div>
+            </div>
+
         </div>
 
         <!-- Container for Dynamic List Tab Contents -->

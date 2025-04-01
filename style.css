@@ -74,7 +74,7 @@ h1 {
 }
 
 .input-area.add-items-section {
-    align-items: flex-start; /* Align items to top */
+    align-items: flex-start; /* Align items to top again */
 }
 
 #listNameInput, 
@@ -87,18 +87,20 @@ h1 {
     background-color: #3a3a3a; /* Dark input background */
     color: #e0e0e0; /* Light text in input */
     font-size: 1em; /* Ensure consistent font size */
+    box-sizing: border-box; /* Ensure padding/border included in height */
 }
 
 #targetListSelect {
     flex-basis: 100%; /* Make dropdown take full width initially */
     margin-bottom: 10px; /* Add space below dropdown */
     max-width: none; /* Override potential inherited max-width */
+    min-height: 40px; /* Set min-height instead */
 }
 
 #listInput {
-     min-height: 60px;
-     flex-basis: calc(100% - 140px); /* Adjust based on button width */
-     resize: vertical;
+    min-height: 40px; /* Use min-height */
+    flex-basis: calc(100% - 170px); /* Keep default basis */
+    resize: vertical; /* Re-enable vertical resizing */
 }
 
 #createListBtn, 
@@ -116,9 +118,10 @@ h1 {
 }
 
 #addItemsBtn {
-     flex-basis: 120px; /* Fixed width for add button */
+     flex-basis: 150px; 
      flex-grow: 0;
-     align-self: flex-end; /* Align with bottom of textarea */
+     /* No align-self needed, should align top by default */
+     height: 40px; /* Keep fixed height for button */
 }
 
 #createListBtn {
@@ -133,16 +136,18 @@ h1 {
 /* Responsive adjustments for select */
 @media (min-width: 601px) {
     #targetListSelect {
-        flex-basis: 200px; /* Allow dropdown to shrink on wider screens */
+        flex-basis: 200px; 
         flex-grow: 0;
         margin-bottom: 0;
     }
     #listInput {
-        flex-basis: calc(100% - 350px); /* Adjust based on select and button width */
+        /* Recalculated: 200px select + 150px button + 2 * 10px gap = 370px */
+        flex-basis: calc(100% - 370px); 
+        resize: vertical;
     }
      .input-area.add-items-section {
-        flex-wrap: nowrap; /* Prevent wrapping on wider screens */
-        align-items: flex-end; /* Align items to bottom */
+        flex-wrap: nowrap; 
+        align-items: flex-start; /* Ensure top alignment */
     }
 }
 
@@ -336,18 +341,31 @@ h2 {
     }
 
     .input-area {
-        flex-direction: column;
+        /* flex-direction: column; Remove this if present, rely on wrapping */
+    }
+    
+    /* Apply to the specific section containing the dropdown */
+    .input-area.add-items-section #targetListSelect,
+    .input-area.add-items-section #listInput {
+        flex-basis: 100%; /* Make select and textarea full width */
+        margin-bottom: 10px; /* Ensure spacing when stacked */
+    }
+    
+    .input-area.add-items-section #addItemsBtn {
+        width: 100%; /* Make button full width */
+        flex-basis: auto; /* Reset basis for mobile */
+        margin-bottom: 0; 
     }
 
-    #listNameInput,
-    #listInput {
-        margin-right: 0;
-        margin-bottom: 10px;
+    /* Ensure other input areas also stack correctly if needed */
+    .input-area #listNameInput,
+    .input-area #createListBtn {
+         flex-basis: 100%;
+         width: 100%;
+         margin-bottom: 10px;
     }
-
-    #createListBtn,
-    #addItemsBtn {
-        align-self: stretch; 
+    .input-area #createListBtn {
+         margin-bottom: 0; /* No margin after last button in its group */
     }
 
     .delete-list-btn {
@@ -415,4 +433,158 @@ h2 {
         display: block; /* Show button on desktop */
     }
     /* Optional: Adjust position/size slightly for desktop if needed */
+} 
+
+/* Settings Section Styling */
+.settings-toggle-btn {
+    display: block;
+    margin: 0 auto 20px auto; /* Center below hr */
+    padding: 8px 15px;
+    background-color: #4a4a4a;
+    color: #ccc;
+    border: 1px solid #666;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.settings-toggle-btn:hover {
+    background-color: #5a5a5a;
+}
+
+.settings-area-wrapper {
+    /* Container is hidden/shown by JS */
+    /* No specific styles needed unless for spacing/transitions later */
+}
+
+.settings-section {
+    margin-top: 0; /* Reset margin as wrapper handles spacing */
+    padding-top: 0; /* Reset padding */
+    border-top: none; /* Remove border as it's on the wrapper/hr now */
+}
+
+.settings-section h2 {
+    margin-bottom: 15px;
+    color: #d0d0d0;
+}
+
+#categorySettingsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.category-setting-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background-color: #3a3a3a;
+    padding: 8px 12px;
+    border-radius: 5px;
+}
+
+.category-setting-row input[type="text"],
+.category-setting-row input[type="color"] {
+    padding: 5px 8px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background-color: #4a4a4a;
+    color: #e0e0e0;
+    font-size: 0.9em;
+}
+
+.category-key-input {
+    flex: 1;
+    font-style: italic;
+    color: #aaa !important; /* Override default */
+    background-color: #333 !important; /* Darker non-editable */
+    cursor: not-allowed;
+    min-width: 80px;
+}
+
+.category-name-input {
+    flex: 2;
+    min-width: 100px;
+}
+
+.category-color-input {
+    height: 30px; /* Match text input height roughly */
+    padding: 2px; /* Adjust padding for color input */
+    cursor: pointer;
+    background-color: #4a4a4a; /* Ensure consistent bg */
+    min-width: 50px;
+}
+
+.delete-category-btn {
+    background-color: #c94c4c;
+    color: #fff;
+    border: none;
+    width: 28px;
+    height: 28px;
+    line-height: 28px; /* Vertically center text/icon */
+    text-align: center;
+    padding: 0;
+    border-radius: 50%; /* Make it round */
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.delete-category-btn:hover:not(:disabled) {
+    background-color: #e06c6c;
+}
+
+.delete-category-btn:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.settings-btn {
+    padding: 8px 15px;
+    background-color: #6ab04c;
+    color: #1a1a1a;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.settings-btn:hover {
+    background-color: #82c963;
+}
+
+/* Mobile adjustments for settings */
+@media (max-width: 600px) {
+    .settings-toggle-btn {
+        width: 100%;
+    }
+    .category-setting-row {
+        flex-wrap: wrap; /* Allow wrapping */
+    }
+    .category-key-input,
+    .category-name-input {
+        flex-basis: calc(50% - 5px); /* Roughly two per row */
+        min-width: 100px;
+    }
+    .category-color-input {
+        flex-basis: 60px; /* Fixed basis */
+        margin-left: auto; /* Push to right if wrapping */
+    }
+    .delete-category-btn {
+         order: 4; /* Move button to end if wrapped */
+         margin-left: 5px;
+    }
+
+    .settings-btn {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        margin-right: 0;
+    }
 } 
