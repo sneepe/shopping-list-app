@@ -15,24 +15,20 @@
         <button id="hamburgerBtn" class="hamburger-btn">&#9776;</button> <!-- Hamburger Icon -->
 
         <div class="tabs desktop-tabs" id="tabContainer">
-            <button class="tab-button active" data-tab="inputTab">Manage Lists</button>
+            <button class="tab-button active" data-tab="inputTab">Manage Items</button>
             <!-- Dynamic list tabs will be inserted here for desktop -->
+            <button id="addListTabBtn" class="tab-button add-tab-btn" title="Create New List">+</button>
         </div>
 
         <div class="mobile-nav" id="mobileNavPanel">
-             <button class="tab-button mobile-tab-button active" data-tab="inputTab">Manage Lists</button>
+             <button class="tab-button mobile-tab-button active" data-tab="inputTab">Manage Items</button>
              <!-- Dynamic list tabs will be inserted here for mobile -->
+             <button id="addListMobileBtn" class="mobile-tab-button add-tab-btn">+ Add New List</button>
         </div>
 
-        <!-- Static Tab: Manage Lists -->
+        <!-- Static Tab: Manage Items (formerly Manage Lists) -->
         <div id="inputTab" class="tab-content active">
-            <h2>Create New List / Add Items</h2>
-            <div class="input-area">
-                <input type="text" id="listNameInput" placeholder="Enter new list name...">
-                <button id="createListBtn">Create List</button>
-            </div>
-
-            <hr style="border-color: #444; margin: 20px 0;">
+            <h2>Add Items / Settings</h2>
 
             <div class="input-area add-items-section">
                  <select id="targetListSelect" required>

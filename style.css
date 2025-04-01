@@ -879,3 +879,80 @@ h2 {
          padding: 10px 15px;
     }
 } 
+
+/* Styling for the permanent Add List (+) buttons */
+.add-tab-btn {
+    background-color: #4CAF50; /* Green background */
+    color: white;
+    border: none;
+    padding: 5px 10px; /* Adjust padding as needed */
+    margin-left: 8px; /* Space from other tabs */
+    font-size: 1.2em; /* Make plus slightly larger */
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.add-tab-btn:hover {
+    background-color: #45a049; /* Darker green on hover */
+}
+
+/* Container for the temporary input/button when adding a list */
+.temp-input-container {
+    display: inline-flex; /* Place input and button side-by-side */
+    align-items: center;
+    margin-left: 8px; /* Match spacing of the button it replaces */
+    vertical-align: middle; /* Align with tabs */
+}
+
+/* Temporary input field for new list name */
+.temp-list-name-input {
+    padding: 6px 10px;
+    border: 1px solid #555; 
+    background-color: #333; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    border-radius: 4px;
+    margin-right: 5px; /* Space between input and button */
+    box-sizing: border-box;
+    height: 32px; /* Match button height approx */
+}
+
+/* Temporary create button (+) */
+.temp-create-list-btn {
+    background-color: #4CAF50; /* Green background */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    font-size: 1.2em;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    height: 32px; /* Match input height approx */
+    line-height: 1; /* Adjust for plus sign centering */
+}
+
+.temp-create-list-btn:hover {
+    background-color: #45a049;
+}
+
+/* Ensure mobile add button fits well */
+#mobileNavPanel .add-tab-btn {
+    margin-top: 10px; /* Add some space above */
+    width: calc(100% - 20px); /* Make it full width minus padding */
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+#mobileNavPanel .temp-input-container {
+    width: calc(100% - 20px);
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 10px; /* Match button spacing */
+    justify-content: space-between; /* Push input and button apart slightly */
+}
+
+#mobileNavPanel .temp-list-name-input {
+    flex-grow: 1; /* Allow input to take available space */
+}
+
+/* ... rest of styles ... */

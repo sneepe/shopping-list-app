@@ -1144,15 +1144,18 @@ function handleToggleSettingsClick() {
 }
 
 // --- List Creation / Deletion --- 
-function createNewList() {
-     if (!listNameInput) { console.error("createNewList: listNameInput is null."); return; } // KEEP Error
-     // console.log("[createNewList] Create List button/enter triggered.");
-    const listName = listNameInput.value.trim();
+// Modified to accept name as argument and return success/failure
+function createNewList(listName) {
+     // console.log(`[createNewList] Attempting to create list: "${listName}"`);
+    listName = listName.trim(); // Ensure trimmed
     if (!listName) {
-        alert("Please enter a name for the new list."); return;
+        alert("Please enter a name for the new list."); 
+        return false; // Indicate failure
     }
-    if (Object.values(shoppingLists).some(list => list.name.toLowerCase() === listName.toLowerCase())) { // Case-insensitive check
-         alert(`A list named "${listName}" already exists.`); return;
+    // Case-insensitive duplicate check
+    if (Object.values(shoppingLists).some(list => list.name.toLowerCase() === listName.toLowerCase())) { 
+         alert(`A list named "${listName}" already exists.`); 
+         return false; // Indicate failure (duplicate)
     }
 
     const newListId = generateId();
@@ -1167,12 +1170,12 @@ function createNewList() {
     if (addItemsBtn) addItemsBtn.disabled = false; // Ensure add button is enabled
 
     saveState();
-    listNameInput.value = ''; // Clear name input
+    // listNameInput.value = ''; // No longer needed as input is handled elsewhere
     
-    // Optional: Focus on the item input for the new list?
-    const newItemInput = document.querySelector(`#list-tab-content-${newListId} .single-item-name-input`);
-    if (newItemInput) newItemInput.focus();
+    // Switch to the newly created list tab
+    switchTab(`list-${newListId}`);
 
+    return true; // Indicate success
 }
 
 function deleteList(listIdToDelete) {
@@ -1438,6 +1441,91 @@ function populateAllDatalists() {
     });
 }
 
+// --- Add List Input Display --- 
+let tempInputCleanup = null; // Function to remove temp input if user cancels
+
+function showCreateListInput(buttonElement) {
+    // Prevent showing multiple inputs if already visible
+    if (document.getElementById('tempListInputContainer')) {
+        return; 
+    }
+
+    buttonElement.style.display = 'none'; // Hide the '+' button
+
+    const container = document.createElement('div');
+    container.id = 'tempListInputContainer';
+    container.classList.add('temp-input-container'); // For potential styling
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'tempListNameInput';
+    input.placeholder = 'New list name...';
+    input.classList.add('temp-list-name-input');
+
+    const createBtn = document.createElement('button');
+    createBtn.textContent = '+'; // Use plus symbol
+    createBtn.title = 'Create List'; // Add title for clarity
+    createBtn.id = 'tempCreateListBtn';
+    createBtn.classList.add('temp-create-list-btn');
+
+    container.appendChild(input);
+    container.appendChild(createBtn);
+
+    // Insert the container right after the hidden button
+    buttonElement.parentNode.insertBefore(container, buttonElement.nextSibling);
+
+    input.focus();
+
+    // --- Event Listeners for Creation ---
+    const handleCreate = () => {
+        const listName = input.value.trim();
+        if (listName) {
+            handleCreateListFromTempInput(listName, container, buttonElement);
+        } else {
+            alert("Please enter a name for the new list.");
+            input.focus();
+        }
+    };
+
+    createBtn.addEventListener('click', handleCreate);
+    input.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Prevent potential form submission
+            handleCreate();
+        }
+    });
+
+    // --- Basic Cleanup Function (will be enhanced for cancel later) ---
+    tempInputCleanup = () => {
+         if (container && container.parentNode) {
+            container.remove();
+         }
+         buttonElement.style.display = ''; // Show the '+' button again
+         tempInputCleanup = null; // Reset cleanup function
+    };
+}
+
+function handleCreateListFromTempInput(listName, inputContainer, originalButton) {
+     // console.log(`[handleCreateListFromTempInput] Attempting to create list: "${listName}"`);
+    
+     const success = createNewList(listName);
+
+     if (success) {
+         // console.log("[handleCreateListFromTempInput] List created successfully. Cleaning up input.");
+         if (tempInputCleanup) {
+            tempInputCleanup(); // Remove temp input and show '+' button again
+         }
+     } else {
+         // console.log("[handleCreateListFromTempInput] List creation failed (e.g., duplicate name). Input remains visible.");
+         // Optionally re-focus the input field if creation failed
+         const inputField = inputContainer.querySelector('#tempListNameInput');
+         if (inputField) {
+             inputField.focus();
+             inputField.select(); // Select text for easy correction
+         }
+     }
+}
+
 // ==================================================
 // === DOMContentLoaded - INITIALIZATION & LISTENERS ==
 // ==================================================
@@ -1467,10 +1555,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Find the mobile 'Manage Lists' button inside the mobile panel
     mobileManageListsTabButton = mobileNavPanel ? mobileNavPanel.querySelector('[data-tab="inputTab"]') : null; 
     pasteBtn = document.getElementById('pasteBtn');
+    // Add list buttons
+    const addListTabBtn = document.getElementById('addListTabBtn');
+    const addListMobileBtn = document.getElementById('addListMobileBtn');
 
     // --- Check if essential elements were found ---
     let essentialElementsFound = true;
-    const essentialIDs = ['listNameInput', 'createListBtn', 'targetListSelect', 'listInput', 'addItemsBtn', 'categoryList', 'tabContainer', 'listContentContainer', 'categorySettingsContainer', 'addNewCategoryBtn', 'saveSettingsBtn', 'toggleSettingsBtn', 'settingsAreaWrapper', 'hamburgerBtn', 'mobileNavPanel', 'pasteBtn'];
+    // REMOVED listNameInput and createListBtn from essential check
+    const essentialIDs = ['targetListSelect', 'listInput', 'addItemsBtn', 'categoryList', 'tabContainer', 'listContentContainer', 'categorySettingsContainer', 'addNewCategoryBtn', 'saveSettingsBtn', 'toggleSettingsBtn', 'settingsAreaWrapper', 'hamburgerBtn', 'mobileNavPanel', 'pasteBtn'];
     essentialIDs.forEach(id => {
         if (!document.getElementById(id)) {
             console.error(`[DOMContentLoaded] CRITICAL: Essential DOM element with ID '${id}' not found!`); // KEEP Error
@@ -1502,10 +1594,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Add Event Listeners ---
     // console.log("[DOMContentLoaded] Adding event listeners...");
 
-    // List Creation
-    if (createListBtn) createListBtn.addEventListener('click', createNewList);
-    if (listNameInput) listNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); createNewList(); } });
-
     // Item Adding (Bulk)
     if (addItemsBtn) addItemsBtn.addEventListener('click', addItemsToList);
     if (listInput) listInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addItemsToList(); } });
@@ -1533,8 +1621,15 @@ document.addEventListener('DOMContentLoaded', () => {
           // targetListSelect.disabled = true; // updateTargetListDropdown handles this
       }
 
+    // Add List Buttons
+    if (addListTabBtn) {
+        addListTabBtn.addEventListener('click', () => showCreateListInput(addListTabBtn));
+    } else { console.warn("[DOMContentLoaded] Add List Tab button not found."); } // KEEP Warn
+    if (addListMobileBtn) {
+        addListMobileBtn.addEventListener('click', () => showCreateListInput(addListMobileBtn));
+    } else { console.warn("[DOMContentLoaded] Add List Mobile button not found."); } // KEEP Warn
 
-    // --- Load State & Initial Render ---
+    // --- Initial Load ---
     // console.log("[DOMContentLoaded] Calling loadState() to load data and start initial render...");
     loadState(); 
 
