@@ -228,13 +228,6 @@ h1 {
     margin-bottom: 30px;
 }
 
-.list-section h3 {
-    border-bottom: 1px solid #555;
-    padding-bottom: 5px;
-    margin-bottom: 15px;
-    color: #d0d0d0;
-}
-
 /* List Container Styling */
 .list-container {
     display: grid;
