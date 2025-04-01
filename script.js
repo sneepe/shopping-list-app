@@ -382,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         card.dataset.itemId = item.id; 
         card.dataset.listId = listId; 
         const categoryInfo = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.default;
-        card.classList.add(categoryInfo.class);
+        card.classList.add(categoryInfo.class); // Initial category class
         
         const nameSpan = document.createElement('span');
         nameSpan.classList.add('item-name');
@@ -398,8 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Regular click toggles 'done' state
         card.addEventListener('click', (e) => {
-             if (longPressDetected) {
-                 // Prevent toggle if long press just finished
+             // Prevent toggle if long press happened or if click was on category UI
+             if (longPressDetected || e.target.closest('.change-category-btn') || e.target.closest('.category-dropdown')) {
                  e.preventDefault();
                  e.stopPropagation();
                  return;
@@ -409,12 +409,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add long-press listeners ONLY to completed items for deletion
         if (item.done) {
-            // Use pointer events for better touch & mouse compatibility
             card.addEventListener('pointerdown', (e) => handlePointerDown(e, listId, item.id));
             card.addEventListener('pointerup', handlePointerUpOrLeave);
             card.addEventListener('pointerleave', handlePointerUpOrLeave); 
-            // Add touch-action to prevent scrolling while holding on mobile
             card.style.touchAction = 'none';
+        }
+
+        // --- Add Category Change UI (Desktop Only) ---
+        // Simple check: Assume > 600px is desktop
+        if (window.innerWidth > 600) {
+            const changeBtn = document.createElement('button');
+            changeBtn.classList.add('change-category-btn');
+            changeBtn.innerHTML = '&#9998;'; // Pencil icon (or use an SVG/Icon font)
+            changeBtn.title = 'Change category';
+            
+            const dropdown = document.createElement('div');
+            dropdown.classList.add('category-dropdown');
+            const select = document.createElement('select');
+            
+            // Populate select options
+            for (const catKey in CATEGORY_CONFIG) {
+                 const option = document.createElement('option');
+                 option.value = catKey === 'default' ? '' : catKey; // Store empty string for 'default' internally
+                 option.textContent = CATEGORY_CONFIG[catKey].name;
+                 if ((item.category || 'default') === catKey) { // Select current category
+                    option.selected = true;
+                 }
+                 select.appendChild(option);
+            }
+
+            select.addEventListener('change', (e) => {
+                const newCategory = e.target.value || null; // null if 'default' was selected
+                updateItemCategory(listId, item.id, newCategory);
+                dropdown.style.display = 'none'; // Hide dropdown after selection
+            });
+
+            dropdown.appendChild(select);
+            card.appendChild(changeBtn);
+            card.appendChild(dropdown);
+
+            changeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent card click toggle
+                // Simple toggle display
+                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            });
+
+            // Optional: Hide dropdown if clicked outside
+            document.addEventListener('click', (e) => {
+                if (!card.contains(e.target)) { // Clicked outside the card
+                    dropdown.style.display = 'none';
+                }
+            }, true); // Use capture phase
         }
 
         return card;
@@ -485,6 +530,32 @@ document.addEventListener('DOMContentLoaded', () => {
              renderItemsForList(listId); // Re-render the list
              saveLists(); // Save changes
          }       
+    }
+
+    // NEW function to update item category
+    function updateItemCategory(listId, itemId, newCategory) {
+        const list = shoppingLists[listId];
+        if (!list) return;
+        const itemIndex = list.items.findIndex(item => item.id === itemId);
+        if (itemIndex > -1) {
+             const item = list.items[itemIndex];
+             if (item.category !== newCategory) {
+                item.category = newCategory;
+                
+                // Update card class directly for immediate visual feedback
+                const cardElement = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
+                if (cardElement) {
+                    // Remove old category classes
+                    Object.values(CATEGORY_CONFIG).forEach(config => cardElement.classList.remove(config.class));
+                    // Add new category class
+                    const newCategoryInfo = CATEGORY_CONFIG[newCategory] || CATEGORY_CONFIG.default;
+                    cardElement.classList.add(newCategoryInfo.class);
+                }
+
+                renderItemsForList(listId); // Re-render list to regroup if needed
+                saveLists(); 
+             } 
+        }
     }
 
     // --- Populate Category List --- 

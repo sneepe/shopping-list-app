@@ -192,9 +192,9 @@ h1 {
 /* List Container Styling */
 .list-container {
     display: grid;
-    /* Aim for 2 columns on larger screens */
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px; /* Increased gap for bigger cards */
+    /* Use 5 columns by default for desktop */
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px; /* Default gap for 5 columns */
 }
 
 /* Styling for category sections within the active list */
@@ -223,22 +223,26 @@ h2 {
 /* Item Card Styling */
 .item-card {
     background-color: #4a4a4a;
-    padding: 15px; /* Adjusted padding slightly */
-    border-radius: 10px; /* Slightly rounder */
+    padding: 8px; /* Default smaller padding */
+    border-radius: 8px; /* Slightly less rounding for smaller cards */
+    position: relative; /* Needed for positioning category change UI */
     text-align: center;
     cursor: pointer;
     transition: transform 0.2s ease, opacity 0.3s ease, background-color 0.3s ease, border-color 0.2s, box-shadow 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); /* Softer shadow */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); 
     word-wrap: break-word;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    /* min-height: 100px; Removed - aspect ratio handles size */
-    aspect-ratio: 1 / 1; /* Make it square */
+    aspect-ratio: 1 / 1; 
     color: #e0e0e0;
     border: 1px solid #555;
-    overflow: hidden; /* Prevent content spillover */
+    overflow: hidden; 
+    user-select: none; 
+    -webkit-user-select: none; 
+    -moz-user-select: none; 
+    -ms-user-select: none; 
 }
 
 .item-card:hover {
@@ -311,14 +315,24 @@ h2 {
     }
 
     .list-container {
-        /* Switch to 1 column on small screens */
-        grid-template-columns: repeat(1, 1fr);
-        gap: 15px;
+        /* Set 3 columns for mobile */
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px; 
     }
 
     .item-card {
-        padding: 15px 10px; /* Adjust padding for smaller cards */
-        min-height: 80px; /* Adjust min height */
+        padding: 8px; /* Keep small padding for mobile */
+        border-radius: 8px; 
+    }
+
+    /* Adjust font sizes for smaller cards on mobile */
+    .item-name {
+        font-size: 0.9em; 
+        margin-bottom: 3px;
+    }
+
+    .item-details {
+        font-size: 0.7em;
     }
 
     .input-area {
@@ -343,4 +357,62 @@ h2 {
         font-size: 1em;
         margin-top: 25px;
     }
+} 
+
+.change-category-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 20px; /* Center icon */
+    text-align: center;
+    color: #ddd;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+    padding: 0;
+    display: none; /* Hidden on mobile by default */
+}
+
+.item-card:hover .change-category-btn {
+    opacity: 1;
+}
+
+.change-category-btn:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.category-dropdown {
+    position: absolute;
+    top: 28px; /* Below button */
+    right: 4px;
+    background-color: #5a5a5a;
+    border: 1px solid #777;
+    border-radius: 4px;
+    padding: 5px;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    display: none; /* Hidden initially */
+}
+
+.category-dropdown select {
+    background-color: #4a4a4a;
+    color: #e0e0e0;
+    border: 1px solid #666;
+    border-radius: 3px;
+    padding: 3px;
+    font-size: 0.9em;
+}
+
+/* Desktop only styles using min-width */
+@media (min-width: 601px) {
+    .change-category-btn {
+        display: block; /* Show button on desktop */
+    }
+    /* Optional: Adjust position/size slightly for desktop if needed */
 } 
