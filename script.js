@@ -671,12 +671,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return a.localeCompare(b); // Sort others alphabetically
                 });
 
-            let activeItemsRendered = false;
             // Iterate over sorted keys from current config
             allCategoryKeys.forEach(categoryKey => {
                 // Check if there are items for this category *in this list*
                 if (groupedActiveItems[categoryKey]) { 
-                    activeItemsRendered = true;
                     const categoryConfig = currentCategoryConfig[categoryKey]; // Get config using the key
                     if (!categoryConfig) { // Safety check, should not happen
                         console.error(`Config not found for category key: ${categoryKey}`);
@@ -694,22 +692,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             });
-            
-            // Optionally hide the 'Active Items' H3 if no active items exist
-            const activeSectionHeading = activeContainer.parentElement.querySelector('h3');
-            if(activeSectionHeading) activeSectionHeading.style.display = activeItemsRendered ? 'block' : 'none';
 
             // Render completed items
-            let completedItemsRendered = false;
             completedItems.forEach(item => {
-                completedItemsRendered = true;
                 const card = createItemCard(item, list.id);
                 activeContainer.appendChild(card);
             });
-
-            // Optionally hide the 'Completed Items' H3 if no completed items exist
-            const completedSectionHeading = activeContainer.parentElement.querySelector('h3');
-            if(completedSectionHeading) completedSectionHeading.style.display = completedItemsRendered ? 'block' : 'none';
 
             contentDiv.appendChild(activeContainer);
 
@@ -777,12 +765,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return a.localeCompare(b); // Sort others alphabetically
             });
 
-        let activeItemsRendered = false;
         // Iterate over sorted keys from current config
         allCategoryKeys.forEach(categoryKey => {
             // Check if there are items for this category *in this list*
             if (groupedActiveItems[categoryKey]) { 
-                activeItemsRendered = true;
                 const categoryConfig = currentCategoryConfig[categoryKey]; // Get config using the key
                 if (!categoryConfig) { // Safety check, should not happen
                     console.error(`Config not found for category key: ${categoryKey}`);
@@ -801,21 +787,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Optionally hide the 'Active Items' H3 if no active items exist
-        const activeSectionHeading = activeContainer.parentElement.querySelector('h3');
-        if(activeSectionHeading) activeSectionHeading.style.display = activeItemsRendered ? 'block' : 'none';
-
         // Render completed items
-        let completedItemsRendered = false;
         completedItems.forEach(item => {
-            completedItemsRendered = true;
             const card = createItemCard(item, listId);
             completedContainer.appendChild(card);
         });
-
-        // Optionally hide the 'Completed Items' H3 if no completed items exist
-        const completedSectionHeading = completedContainer.parentElement.querySelector('h3');
-        if(completedSectionHeading) completedSectionHeading.style.display = completedItemsRendered ? 'block' : 'none';
     }
 
     // --- Card Creation (Modified) --- 
