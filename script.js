@@ -644,16 +644,74 @@ document.addEventListener('DOMContentLoaded', () => {
             contentDiv.appendChild(singleAddSection); // Add section below heading
 
             // Active Items Section Structure
-            const activeSection = document.createElement('div');
-            activeSection.classList.add('list-section', 'active-list');
-            const activeHeading = document.createElement('h3'); // Create heading explicitly
-            activeHeading.textContent = 'Active Items';
-            activeSection.appendChild(activeHeading);
             const activeContainer = document.createElement('div');
-            activeContainer.classList.add('list-container');
+            activeContainer.className = 'list-container';
             activeContainer.id = `activeListContainer-${list.id}`;
-            activeSection.appendChild(activeContainer);
-            contentDiv.appendChild(activeSection);
+
+            // Clear previous active items
+            activeContainer.innerHTML = ''; // Clear previous active items
+
+            const activeItems = list.items.filter(item => !item.done);
+            const completedItems = list.items.filter(item => item.done);
+
+            const groupedActiveItems = activeItems.reduce((acc, item) => {
+                 const categoryKey = item.category || 'default'; // Use 'default' if item.category is null/undefined
+                 if (!acc[categoryKey]) acc[categoryKey] = [];
+                 acc[categoryKey].push(item);
+                 return acc;
+             }, {});
+
+            // --- MODIFIED CATEGORY ITERATION --- 
+            // Get all category keys from current config, sort them alphabetically, 
+            // ensuring 'default' comes last if present.
+            const allCategoryKeys = Object.keys(currentCategoryConfig)
+                .sort((a, b) => {
+                    if (a === 'default') return 1; // Push default to end
+                    if (b === 'default') return -1;
+                    return a.localeCompare(b); // Sort others alphabetically
+                });
+
+            let activeItemsRendered = false;
+            // Iterate over sorted keys from current config
+            allCategoryKeys.forEach(categoryKey => {
+                // Check if there are items for this category *in this list*
+                if (groupedActiveItems[categoryKey]) { 
+                    activeItemsRendered = true;
+                    const categoryConfig = currentCategoryConfig[categoryKey]; // Get config using the key
+                    if (!categoryConfig) { // Safety check, should not happen
+                        console.error(`Config not found for category key: ${categoryKey}`);
+                        return; 
+                    }
+                    const categoryHeader = document.createElement('div');
+                    categoryHeader.classList.add('category-header');
+                    categoryHeader.textContent = categoryConfig.name; 
+                    activeContainer.appendChild(categoryHeader);
+                    
+                    // Render items for this specific category
+                    groupedActiveItems[categoryKey].forEach(item => {
+                        const card = createItemCard(item, list.id);
+                        activeContainer.appendChild(card);
+                    });
+                }
+            });
+            
+            // Optionally hide the 'Active Items' H3 if no active items exist
+            const activeSectionHeading = activeContainer.parentElement.querySelector('h3');
+            if(activeSectionHeading) activeSectionHeading.style.display = activeItemsRendered ? 'block' : 'none';
+
+            // Render completed items
+            let completedItemsRendered = false;
+            completedItems.forEach(item => {
+                completedItemsRendered = true;
+                const card = createItemCard(item, list.id);
+                activeContainer.appendChild(card);
+            });
+
+            // Optionally hide the 'Completed Items' H3 if no completed items exist
+            const completedSectionHeading = activeContainer.parentElement.querySelector('h3');
+            if(completedSectionHeading) completedSectionHeading.style.display = completedItemsRendered ? 'block' : 'none';
+
+            contentDiv.appendChild(activeContainer);
 
             // Completed Items Section Structure
             const completedSection = document.createElement('div');
