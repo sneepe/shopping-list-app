@@ -210,6 +210,23 @@ function continueLoadSequence() {
             renderCategorySettings(); 
             populateCategoryGuide(); 
 
+            // Populate ALL datalists AFTER UI is rendered and known items are loaded
+            // Use setTimeout to ensure DOM is ready after rendering
+            setTimeout(() => {
+                // console.log("[continueLoadSequence -> setTimeout] Populating ALL datalists...");
+                // Update main datalist
+                const mainDatalist = document.getElementById('itemSuggestions');
+                if (mainDatalist) {
+                    populateItemDatalist(mainDatalist);
+                } else {
+                    console.warn("[continueLoadSequence -> setTimeout] Could not find main datalist 'itemSuggestions' to populate.");
+                }
+                // Update ALL list-specific datalists
+                document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
+                     populateItemDatalist(datalist);
+                });
+            }, 0);
+
             const sortedListIds = Object.keys(shoppingLists).sort((a, b) => shoppingLists[a].name.localeCompare(shoppingLists[b].name));
             const firstListId = sortedListIds[0];
             // console.log("[continueLoadSequence] Determining initial active tab..."); 
@@ -1287,9 +1304,45 @@ function addDefaultItemsToCache(defaultItems) {
      if (!Array.isArray(defaultItems)) {
          console.warn("[addDefaultItemsToCache] Default items data is not an array, skipping.", defaultItems); return; // KEEP Warn
      }
-    // ... add defaults ...
+    let defaultsAdded = 0;
+    let needsDatalistUpdate = false;
+    
+    defaultItems.forEach(item => {
+        if (item && item.name) {
+            const lowerCaseName = item.name.toLowerCase();
+            // Only add default item if the item doesn't already exist in knownItems
+            // OR if the existing known item has no category and the default item DOES.
+            // This prevents overwriting user-categorized items with defaults.
+            if (!knownItems[lowerCaseName] || (knownItems[lowerCaseName].category === null && item.category)) {
+                 knownItems[lowerCaseName] = {
+                     original: item.name, // Use original casing from default file
+                     category: item.category || null
+                 };
+                 defaultsAdded++;
+                 needsDatalistUpdate = true;
+             }
+         } else {
+            console.warn("[addDefaultItemsToCache] Skipping invalid default item:", item); // KEEP Warn
+         }
+    });
+
      // console.log(`[addDefaultItemsToCache] Added ${defaultsAdded} default items to suggestion cache.`);
-    // ... repopulate datalists ...
+     
+    // // If defaults were added, repopulate ALL datalists -- REMOVED LOGIC
+    // if (needsDatalistUpdate) {
+    //     // console.log("[addDefaultItemsToCache] Repopulating datalists after adding defaults...");
+    //     // // Update main datalist
+    //     // const mainDatalist = document.getElementById('itemSuggestions');
+    //     // if (mainDatalist) {
+    //     //     populateItemDatalist(mainDatalist);
+    //     // } else {
+    //     //     console.warn("[addDefaultItemsToCache] Could not find main datalist 'itemSuggestions' to update.");
+    //     // }
+    //     // // Update ALL list-specific datalists
+    //     // document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
+    //     //     populateItemDatalist(datalist);
+    //     // });
+    // }
 }
 
 function updateKnownItem(item) {
@@ -1315,10 +1368,17 @@ function updateKnownItem(item) {
     //}
 
     if (needsDatalistUpdate) {
-        // Update ALL datalists when cache changes
+        // Update ALL list-specific datalists when cache changes
         document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
             populateItemDatalist(datalist);
         });
+        // ALSO update the main datalist for the bulk input
+        const mainDatalist = document.getElementById('itemSuggestions');
+        if (mainDatalist) {
+            populateItemDatalist(mainDatalist);
+        } else {
+            console.warn("[updateKnownItem] Could not find main datalist 'itemSuggestions' to update.");
+        }
     }
 }
 
