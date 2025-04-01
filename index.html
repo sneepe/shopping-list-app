@@ -39,10 +39,12 @@
                     <option value="" disabled selected>Select list to add items to...</option>
                     <!-- List options will be added by JS -->
                 </select>
-                <textarea id="listInput" placeholder="Paste items here...
-e.g., Milk x2 cat:dairy, Apples cat:fruit"></textarea>
+                <textarea id="listInput" placeholder="Enter items separated by comma, semicolon, or newline..." rows="4" list="itemSuggestions"></textarea>
+                <datalist id="itemSuggestions">
+                    <!-- Options will be added here by JavaScript -->
+                </datalist>
                 <div class="button-group">
-                    <button id="pasteBtn" class="paste-btn mobile-only-btn" title="Paste from Clipboard">Paste</button> 
+                    <button id="pasteBtn" class="paste-btn mobile-only-btn" title="Paste from Clipboard"><i class="fas fa-paste"></i></button> 
                     <button id="addItemsBtn" disabled>Add to Selected List</button> 
                 </div>
             </div>
@@ -79,25 +81,7 @@ e.g., Milk x2 cat:dairy, Apples cat:fruit"></textarea>
 
         <!-- Container for Dynamic List Tab Contents -->
         <div id="listContentContainer">
-            <!-- Dynamic list tab contents will be inserted here -->
-            <!-- Example structure for one list tab content:
-            <div id="list-tab-content-{listId}" class="tab-content list-tab">
-                <h2>List Name</h2>
-                <div class="input-area add-single-item-section" data-list-id="{listId}">
-                     <input type="text" class="single-item-name-input" placeholder="Item Name" required list="itemSuggestions-{listId}">
-                     <datalist id="itemSuggestions-{listId}">
-                        <!-- Suggestions populated by JS -->
-                     </datalist>
-                     <input type="number" class="single-item-qty-input" placeholder="Qty" min="1" style="max-width: 70px;">
-                     <select class="single-item-category-select">
-                        <option value="">Category</option>
-                     </select>
-                     <button class="add-single-item-btn">+</button>
-                 </div>
-                <div class="list-container" id="activeListContainer-{listId}">
-                    <!-- Category sections and item cards go here -->
-                </div>
-            </div>
+            <!-- Dynamic list tab contents will be inserted here by script.js -->
         </div>
 
     </div>

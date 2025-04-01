@@ -210,23 +210,6 @@ function continueLoadSequence() {
             renderCategorySettings(); 
             populateCategoryGuide(); 
 
-            // Populate ALL datalists AFTER UI is rendered and known items are loaded
-            // Use setTimeout to ensure DOM is ready after rendering
-            setTimeout(() => {
-                // console.log("[continueLoadSequence -> setTimeout] Populating ALL datalists...");
-                // Update main datalist
-                const mainDatalist = document.getElementById('itemSuggestions');
-                if (mainDatalist) {
-                    populateItemDatalist(mainDatalist);
-                } else {
-                    console.warn("[continueLoadSequence -> setTimeout] Could not find main datalist 'itemSuggestions' to populate.");
-                }
-                // Update ALL list-specific datalists
-                document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
-                     populateItemDatalist(datalist);
-                });
-            }, 0);
-
             const sortedListIds = Object.keys(shoppingLists).sort((a, b) => shoppingLists[a].name.localeCompare(shoppingLists[b].name));
             const firstListId = sortedListIds[0];
             // console.log("[continueLoadSequence] Determining initial active tab..."); 
@@ -237,6 +220,10 @@ function continueLoadSequence() {
                 // console.log("[continueLoadSequence] No lists found, activating input tab."); 
                 switchTab('inputTab');
             }
+            
+            // Populate datalists AFTER the initial tab has been switched
+            populateAllDatalists();
+
             // console.log("[continueLoadSequence] Finished."); 
         });
 }
@@ -1015,34 +1002,31 @@ function toggleItemDone(listId, itemId) {
     // --- State Update & Re-render after Shrink ---
     setTimeout(() => {
         // console.log(`[toggleItemDone] Shrink timeout reached for ${itemId}. Updating state and re-rendering.`);
+        const wasDone = item.done; // Check state *before* toggling
         item.done = !item.done; 
-        // console.log(`[toggleItemDone] Item state toggled to done: ${item.done}. Saving state.`);
-        saveState();
+        // console.log(`[toggleItemDone] Item state toggled to done: ${item.done}.`);
+        
+        // If item was moved from completed back to active, increment its count via updateKnownItem
+        if (wasDone && !item.done) {
+            // console.log(`[toggleItemDone] Item "${item.name}" moved back to active list. Incrementing count.`);
+            updateKnownItem(item); // updateKnownItem handles incrementing count and saving state
+        } else {
+            // If item was just completed (active -> done), just save the state change
+            saveState(); 
+        }
+        
+        // Always re-render the list after the state change
         renderItemsForList(listId, itemId); 
-    }, 300);
+    }, 300); 
 }
 
 
 // --- Item Input / Parsing / Adding --- 
 function addItemsToList() {
-    if (!targetListSelect || !listInput) { console.error("addItemsToList: Core elements missing."); return; } // KEEP Error
-    // console.log("[addItemsToList] Add Items button/enter triggered.");
-    const selectedListId = targetListSelect.value;
-    if (!selectedListId) { alert("Please select a list from the dropdown first!"); return; }
-    
-    const currentList = shoppingLists[selectedListId];
-    if (!currentList) { alert("Selected list not found. Please refresh."); return; }
-
-    const inputText = listInput.value;
-    const itemsArray = inputText.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean); // Trim and remove empty strings
-    // console.log(`[addItemsToList] Parsed ${itemsArray.length} potential items from input.`);
-    
-    const newItems = itemsArray.map(parseItemString).filter(item => item !== null);
-    // console.log(`[addItemsToList] Successfully parsed ${newItems.length} items.`);
-
     let addedCount = 0;
     let skippedCount = 0;
-    newItems.forEach(newItem => {
+    // Use a for...of loop instead of forEach to potentially avoid syntax issues
+    for (const newItem of newItems) {
         // Check for duplicates (case-insensitive name, same category, same quantity, not done)
         const exists = currentList.items.some(existingItem => 
             existingItem.name.toLowerCase() === newItem.name.toLowerCase() && 
@@ -1058,7 +1042,7 @@ function addItemsToList() {
              // console.log(`[addItemsToList] Skipping duplicate item: ${newItem.name}`);
              skippedCount++;
          }
-    });
+    } // End of for...of loop
 
     // console.log(`[addItemsToList] Added: ${addedCount}, Skipped (duplicates): ${skippedCount}`);
 
@@ -1279,25 +1263,37 @@ function parseItemString(itemStr) {
 
 // --- Autocomplete Cache --- 
 function buildKnownItemsCacheFromStorage() {
-    // console.log("[buildKnownItemsCacheFromStorage] Building cache from storage...");
+    // console.log("[buildKnownItemsCacheFromStorage] Building cache from storage with counts...");
     knownItems = {}; // Reset cache
     let itemsProcessed = 0;
     Object.values(shoppingLists).forEach(list => {
         list.items.forEach(item => {
             if (item.name) { 
                 const lowerCaseName = item.name.toLowerCase();
-                // Prioritize items that HAVE a category set when updating cache entry
-                if (!knownItems[lowerCaseName] || (item.category !== null && knownItems[lowerCaseName].category === null) ) {
-                     knownItems[lowerCaseName] = { 
-                         original: item.name, 
-                         category: item.category || null 
-                     };
+                if (knownItems[lowerCaseName]) {
+                    // Increment count if item already exists
+                    knownItems[lowerCaseName].count++;
+                    // Optionally update original name/category if the current item provides more info
+                    // e.g., update if current item has a category and cached one doesn't
+                    if (item.category !== null && knownItems[lowerCaseName].category === null) {
+                         knownItems[lowerCaseName].category = item.category;
+                         knownItems[lowerCaseName].original = item.name; // Keep original casing consistent
+                    }
+                    // Maybe update 'original' to the most recently added casing? Matter of preference.
+                    // knownItems[lowerCaseName].original = item.name; 
+                } else {
+                    // Add new item with count 1
+                    knownItems[lowerCaseName] = { 
+                        original: item.name, 
+                        category: item.category || null,
+                        count: 1 
+                    };
                 }
                 itemsProcessed++;
              }
         });
     });
-     // console.log(`[buildKnownItemsCacheFromStorage] Built cache with ${Object.keys(knownItems).length} unique items from ${itemsProcessed} total items.`);
+     // console.log(`[buildKnownItemsCacheFromStorage] Built cache with ${Object.keys(knownItems).length} unique items (considering counts) from ${itemsProcessed} total items.`);
 }
 
 function addDefaultItemsToCache(defaultItems) {
@@ -1313,12 +1309,19 @@ function addDefaultItemsToCache(defaultItems) {
             // Only add default item if the item doesn't already exist in knownItems
             // OR if the existing known item has no category and the default item DOES.
             // This prevents overwriting user-categorized items with defaults.
-            if (!knownItems[lowerCaseName] || (knownItems[lowerCaseName].category === null && item.category)) {
+            if (!knownItems[lowerCaseName]) {
                  knownItems[lowerCaseName] = {
                      original: item.name, // Use original casing from default file
-                     category: item.category || null
+                     category: item.category || null,
+                     count: 1 // Give default items a base count
                  };
                  defaultsAdded++;
+                 needsDatalistUpdate = true;
+             } else if (knownItems[lowerCaseName].category === null && item.category) {
+                 // Update category and original name if default provides it and user version didn't
+                 knownItems[lowerCaseName].category = item.category;
+                 knownItems[lowerCaseName].original = item.name;
+                 // Don't reset count here, keep the user's count
                  needsDatalistUpdate = true;
              }
          } else {
@@ -1353,49 +1356,86 @@ function updateKnownItem(item) {
     // Update cache if:
     // 1. Item is new to the cache.
     // 2. Item has a category, and the cached version doesn't.
-    if (!knownItems[lowerCaseName] || (item.category !== null && knownItems[lowerCaseName].category === null)) {
-        // console.log(`[updateKnownItem] Updating/adding cache for "${item.name}" with category "${item.category || 'null'}"`);
-        knownItems[lowerCaseName] = { 
-            original: item.name, 
-            category: item.category || null 
+    if (!knownItems[lowerCaseName]) {
+        // console.log(`[updateKnownItem] Adding NEW item to cache: "${item.name}" with category "${item.category || 'null'}"`);
+        knownItems[lowerCaseName] = {
+            original: item.name,
+            category: item.category || null,
+            count: 1 // Start count at 1 for new items
         };
-        needsDatalistUpdate = true; 
-    } 
-    // Optional: Decide if you want adding an item *without* a category to *remove* the category from the cache.
-    // else if (item.category === null && knownItems[lowerCaseName].category !== null) {
-    //    knownItems[lowerCaseName].category = null;
-    //    needsDatalistUpdate = true;
-    //}
-
+        needsDatalistUpdate = true;
+    } else {
+        // Item exists, increment count
+        knownItems[lowerCaseName].count++;
+        // console.log(`[updateKnownItem] Incrementing count for "${item.name}" to ${knownItems[lowerCaseName].count}`);
+        // Check if category needs updating (if new item provides one)
+        if (item.category !== null && knownItems[lowerCaseName].category === null) {
+            // console.log(`[updateKnownItem] Updating category for existing item "${item.name}" to "${item.category}"`);
+            knownItems[lowerCaseName].category = item.category;
+            knownItems[lowerCaseName].original = item.name; // Update original casing too?
+            needsDatalistUpdate = true;
+        } else if (!needsDatalistUpdate) {
+            // If only count changed, we still might need to update datalist due to sorting
+            needsDatalistUpdate = true; 
+        }
+    } // End of else block (item exists)
+    
     if (needsDatalistUpdate) {
         // Update ALL list-specific datalists when cache changes
         document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
             populateItemDatalist(datalist);
         });
-        // ALSO update the main datalist for the bulk input
-        const mainDatalist = document.getElementById('itemSuggestions');
-        if (mainDatalist) {
-            populateItemDatalist(mainDatalist);
-        } else {
-            console.warn("[updateKnownItem] Could not find main datalist 'itemSuggestions' to update.");
-        }
+        // // ALSO update the main datalist for the bulk input -- REMOVED as it causes warnings when inputTab is hidden
+        // const mainDatalist = document.getElementById('itemSuggestions');
+        // if (mainDatalist) {
+        //     populateItemDatalist(mainDatalist);
+        // } else {
+        //     console.warn("[updateKnownItem] Could not find main datalist 'itemSuggestions' to update.");
+        // }
     }
 }
 
-function populateItemDatalist(datalistElement) {
+function populateItemDatalist(datalistElement, maxSuggestions = 15) {
     if (!datalistElement) { console.error("populateItemDatalist: datalistElement is null."); return; } // KEEP Error
     datalistElement.innerHTML = ''; // Clear old suggestions
     
-    const sortedKeys = Object.keys(knownItems).sort((a, b) => 
-        knownItems[a].original.localeCompare(knownItems[b].original)
-    );
+    // Convert knownItems object to an array for sorting
+    const itemsArray = Object.entries(knownItems).map(([key, value]) => ({ key, ...value }));
 
-    sortedKeys.forEach(itemNameKey => {
+    // Sort by count (descending), then by original name (ascending)
+    itemsArray.sort((a, b) => {
+        const countDiff = (b.count || 0) - (a.count || 0);
+        if (countDiff !== 0) {
+            return countDiff;
+        }
+        return a.original.localeCompare(b.original);
+    });
+
+    // Take the top N suggestions
+    const topSuggestions = itemsArray.slice(0, maxSuggestions);
+
+    // Populate the datalist
+    topSuggestions.forEach(itemData => {
         const option = document.createElement('option');
-        option.value = knownItems[itemNameKey].original; 
+        option.value = itemData.original; 
         datalistElement.appendChild(option);
     });
-     // console.log(`[populateItemDatalist] Populated datalist #${datalistElement.id} with ${sortedKeys.length} items.`); // DEBUG - Can be noisy
+     // console.log(`[populateItemDatalist] Populated datalist #${datalistElement.id} with ${topSuggestions.length} (max ${maxSuggestions}) items after sorting by count.`); // DEBUG
+}
+
+function populateAllDatalists() {
+    // console.log("[populateAllDatalists] Populating ALL datalists...");
+    // Update main datalist
+    const mainDatalistElement = document.getElementById('itemSuggestions');
+    if (mainDatalistElement) {
+        populateItemDatalist(mainDatalistElement);
+    } else {
+        console.warn("[populateAllDatalists] Could not find main datalist 'itemSuggestions' to populate.");
+    }
+    // Update ALL list-specific datalists
+    document.querySelectorAll('datalist[id^="itemSuggestions-"]').forEach(datalist => {
+        populateItemDatalist(datalist);
+    });
 }
 
 // ==================================================
@@ -1445,11 +1485,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!manageListsTabButton) console.warn("[DOMContentLoaded] Desktop 'Manage Lists' button not found."); // KEEP Warn
     if (!mobileManageListsTabButton) console.warn("[DOMContentLoaded] Mobile 'Manage Lists' button not found."); // KEEP Warn
 
-    // --- Add EXTRA check specifically for inputTab ---
+    // --- Add EXTRA check specifically for inputTab AND its datalist ---
     const checkInputContent = document.getElementById('inputTab');
+    const checkDatalist = document.getElementById('itemSuggestions'); // CHECK DATALIST HERE
     // console.log("[DOMContentLoaded] Checking for #inputTab BEFORE loadState:", checkInputContent ? 'FOUND' : 'NOT FOUND!');
+    // console.log("[DOMContentLoaded] Checking for #itemSuggestions BEFORE loadState:", checkDatalist ? 'FOUND' : 'NOT FOUND!'); // DEBUG
     if (!checkInputContent) {
         alert("CRITICAL HTML ERROR: The main input area container (#inputTab) is missing from index.html!");
+        return;
+    }
+    if (!checkDatalist) { // ADDED CHECK
+        alert("CRITICAL HTML ERROR: The main datalist (#itemSuggestions) for the bulk input is missing from index.html!");
         return;
     }
 
