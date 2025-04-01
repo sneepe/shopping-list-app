@@ -1,0 +1,321 @@
+/* Dark Theme */
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #1a1a1a; /* Dark background */
+    color: #e0e0e0; /* Light text */
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: #2c2c2c; /* Slightly lighter dark background */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); /* Adjusted shadow for dark */
+    border: 1px solid #444; /* Subtle border */
+}
+
+h1 {
+    text-align: center;
+    color: #e0e0e0; /* Light text */
+    margin-bottom: 20px;
+}
+
+/* Tabs Styling */
+.tabs {
+    display: flex;
+    flex-wrap: wrap; /* Allow tabs to wrap */
+    margin-bottom: 20px;
+    border-bottom: 1px solid #555; /* Darker border */
+}
+
+.tab-button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    border-bottom: 3px solid transparent;
+    font-size: 1em;
+    margin-right: 5px;
+    color: #b0b0b0; /* Lighter gray for inactive tabs */
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    margin-bottom: -1px; /* Align with border */
+}
+
+.tab-button.active {
+    border-bottom: 3px solid #6ab04c; /* Adjusted green */
+    font-weight: bold;
+    color: #e0e0e0; /* Light text for active tab */
+}
+
+.tab-button:hover:not(.active) {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+}
+
+/* Tab Content Styling */
+.tab-content {
+    display: none; /* Hide all tabs by default */
+    padding-top: 20px; /* Add space between tabs and content */
+}
+
+.tab-content.active {
+    display: block; /* Show only the active tab */
+}
+
+/* Input Area Styling */
+.input-area {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping for dropdown */
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.input-area.add-items-section {
+    align-items: flex-start; /* Align items to top */
+}
+
+#listNameInput, 
+#listInput,
+#targetListSelect /* Added */ {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background-color: #3a3a3a; /* Dark input background */
+    color: #e0e0e0; /* Light text in input */
+    font-size: 1em; /* Ensure consistent font size */
+}
+
+#targetListSelect {
+    flex-basis: 100%; /* Make dropdown take full width initially */
+    margin-bottom: 10px; /* Add space below dropdown */
+    max-width: none; /* Override potential inherited max-width */
+}
+
+#listInput {
+     min-height: 60px;
+     flex-basis: calc(100% - 140px); /* Adjust based on button width */
+     resize: vertical;
+}
+
+#createListBtn, 
+#addItemsBtn {
+    padding: 10px 15px;
+    background-color: #6ab04c; /* Adjusted green */
+    color: #1a1a1a; /* Dark text on button */
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    /* align-self: flex-start; Removed, alignment handled by container */
+    transition: background-color 0.2s;
+    height: 40px; /* Match default input height */
+}
+
+#addItemsBtn {
+     flex-basis: 120px; /* Fixed width for add button */
+     flex-grow: 0;
+     align-self: flex-end; /* Align with bottom of textarea */
+}
+
+#createListBtn {
+    height: auto; /* Allow create button height to be natural */
+}
+
+#addItemsBtn:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* Responsive adjustments for select */
+@media (min-width: 601px) {
+    #targetListSelect {
+        flex-basis: 200px; /* Allow dropdown to shrink on wider screens */
+        flex-grow: 0;
+        margin-bottom: 0;
+    }
+    #listInput {
+        flex-basis: calc(100% - 350px); /* Adjust based on select and button width */
+    }
+     .input-area.add-items-section {
+        flex-wrap: nowrap; /* Prevent wrapping on wider screens */
+        align-items: flex-end; /* Align items to bottom */
+    }
+}
+
+/* Instructions Area Styling */
+.instructions {
+    background-color: #333;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    margin-top: 10px;
+    color: #c0c0c0;
+}
+
+.instructions h3 {
+    margin-top: 0;
+    color: #e0e0e0;
+}
+
+.instructions code {
+    background-color: #4a4a4a;
+    padding: 2px 5px;
+    border-radius: 3px;
+    color: #d0d0d0;
+}
+
+.instructions ul {
+    padding-left: 20px;
+    margin-top: 5px;
+}
+
+.instructions li {
+    margin-bottom: 5px;
+}
+
+/* Styling for list sections within a tab */
+.list-section {
+    margin-bottom: 30px;
+}
+
+.list-section h3 {
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    color: #d0d0d0;
+}
+
+/* List Container Styling */
+.list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    /* margin-top: 20px; Removed as spacing handled by list-section */
+}
+
+h2 {
+    /* Tab content headings - potentially removed or restyled */
+    margin-top: 0; 
+    color: #e0e0e0;
+}
+
+/* Item Card Styling */
+.item-card {
+    background-color: #4a4a4a; /* Darker card background */
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.3s ease, background-color 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    word-wrap: break-word;
+    display: flex;
+    flex-direction: column; 
+    justify-content: center;
+    align-items: center;
+    min-height: 80px;
+    color: #e0e0e0; /* Light text on card */
+    border: 1px solid #555; /* Subtle border */
+}
+
+.item-card:hover {
+    transform: translateY(-3px);
+    border-color: #777;
+}
+
+/* Completed items have reduced opacity */
+.completed-list .item-card {
+     opacity: 0.6; 
+}
+
+.completed-list .item-card:hover {
+     opacity: 0.8;
+}
+
+.item-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.item-details {
+    font-size: 0.8em;
+    color: #b0b0b0; /* Lighter gray for details */
+}
+
+/* Category colors adjusted for dark theme */
+.category-fruit { background-color: #5a994a; } /* Darker Green */
+.category-dairy { background-color: #4a7db1; } /* Darker Blue */
+.category-household { background-color: #666666; } /* Darker Gray */
+.category-meat { background-color: #b15a4a; } /* Darker Red */
+.category-snacks { background-color: #b1a04a; } /* Darker Yellow */
+.category-default { background-color: #4a4a4a; }
+
+
+/* Delete List Button Styling */
+.delete-list-btn {
+    background-color: #c94c4c; /* Reddish color */
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    float: right; /* Position it nicely */
+    margin-left: 10px;
+    transition: background-color 0.2s;
+}
+
+.delete-list-btn:hover {
+    background-color: #e06c6c;
+}
+
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .tabs {
+        /* flex-wrap is already set */
+    }
+    .tab-button {
+        padding: 8px 12px;
+        font-size: 0.9em;
+        flex-basis: auto; /* Let them size naturally */
+        text-align: center;
+        margin-bottom: 5px; 
+    }
+
+    .list-container {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+    }
+
+    .item-card {
+        padding: 10px;
+        min-height: 70px;
+    }
+
+    .input-area {
+        flex-direction: column;
+    }
+
+    #listNameInput,
+    #listInput {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    #createListBtn,
+    #addItemsBtn {
+        align-self: stretch; 
+    }
+
+    .delete-list-btn {
+        float: none;
+        display: block;
+        margin-top: 10px;
+        text-align: center;
+    }
+} 

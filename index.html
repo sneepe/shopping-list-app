@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-List Shopper</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Multi-List Shopper</h1>
+
+        <div class="tabs" id="tabContainer">
+            <button class="tab-button active" data-tab="inputTab">Manage Lists</button>
+            <!-- Dynamic list tabs will be inserted here -->
+        </div>
+
+        <!-- Static Tab: Manage Lists -->
+        <div id="inputTab" class="tab-content active">
+            <h2>Create New List / Add Items</h2>
+            <div class="input-area">
+                <input type="text" id="listNameInput" placeholder="Enter new list name...">
+                <button id="createListBtn">Create List</button>
+            </div>
+
+            <hr style="border-color: #444; margin: 20px 0;">
+
+            <div class="input-area add-items-section">
+                 <select id="targetListSelect" required>
+                    <option value="" disabled selected>Select list to add items to...</option>
+                    <!-- List options will be added by JS -->
+                </select>
+                <textarea id="listInput" placeholder="Paste items here...
+e.g., Milk x2 cat:dairy, Apples cat:fruit"></textarea>
+                <button id="addItemsBtn" disabled>Add to Selected List</button> 
+            </div>
+
+            <div class="instructions">
+                <h3>Formatting Guide:</h3>
+                <p>Separate items with commas, semicolons, or newlines.</p>
+                <p>Optional: Add quantity like <code>Item Name x3</code>.</p>
+                <p>Optional: Add category like <code>Item Name cat:category_name</code>.</p>
+                <p>Available categories (used for color-coding):</p>
+                <ul id="categoryList">
+                    <!-- Categories will be listed here by JS -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Container for Dynamic List Tab Contents -->
+        <div id="listContentContainer">
+            <!-- Dynamic list tab contents will be inserted here -->
+            <!-- Example structure for one list tab content:
+            <div id="list-tab-content-{listId}" class="tab-content list-tab">
+                <h2>List Name <button class="delete-list-btn" data-list-id="{listId}">Delete List</button></h2>
+                <div class="list-section active-list">
+                    <h3>Active Items</h3>
+                    <div class="list-container" id="activeListContainer-{listId}"></div>
+                </div>
+                <div class="list-section completed-list">
+                    <h3>Completed Items</h3>
+                    <div class="list-container" id="completedListContainer-{listId}"></div>
+                </div>
+            </div> 
+            -->
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
