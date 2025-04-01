@@ -34,13 +34,14 @@
                  <select id="targetListSelect" required>
                     <option value="" disabled selected>Select list to add items to...</option>
                     <!-- List options will be added by JS -->
-                </select>
-                <textarea id="listInput" placeholder="Enter items separated by comma, semicolon, or newline..." rows="4" list="itemSuggestions"></textarea>
+                 </select>
+                 <input type="text" id="firstListNameInput" class="hidden" placeholder="Enter name for first list...">
+                 <textarea id="listInput" placeholder="Enter items separated by comma, semicolon, or newline..." rows="4" list="itemSuggestions"></textarea>
                 <datalist id="itemSuggestions">
                     <!-- Options will be added here by JavaScript -->
                 </datalist>
                 <div class="button-group">
-                    <button id="pasteBtn" class="paste-btn mobile-only-btn" title="Paste from Clipboard"><i class="fas fa-paste"></i></button> 
+                    <button id="pasteBtn" class="paste-btn mobile-only-btn" title="Paste from Clipboard"><i class="fas fa-paste">Paste</i></button> 
                     <button id="addItemsBtn" disabled>Add to Selected List</button> 
                 </div>
             </div>

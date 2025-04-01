@@ -235,19 +235,39 @@ function generateId() {
 
 // --- Target List Dropdown --- 
 function updateTargetListDropdown() {
+    // Ensure elements exist
     if (!targetListSelect) { console.error("updateTargetListDropdown: targetListSelect is null"); return; } // KEEP Error
+    const firstListNameInput = document.getElementById('firstListNameInput');
+    if (!firstListNameInput) { console.error("updateTargetListDropdown: firstListNameInput is null"); return; } // KEEP Error
+    if (!addItemsBtn) { console.warn("updateTargetListDropdown: addItemsBtn is null"); } // KEEP Warn but continue
+
     const currentSelection = targetListSelect.value;
-    // console.log('[updateTargetListDropdown] Updating. Lists:', Object.keys(shoppingLists), 'Current selection:', currentSelection);
-    targetListSelect.innerHTML = '<option value="" disabled selected>Select list to add items to...</option>';
+    const listsExist = Object.keys(shoppingLists).length > 0;
 
-    const sortedLists = Object.values(shoppingLists).sort((a, b) => a.name.localeCompare(b.name));
-    let firstListId = null; 
+    if (!listsExist) {
+        // NO LISTS EXIST: Show input field, hide dropdown
+        // console.log("[updateTargetListDropdown] No lists exist. Showing first list name input.");
+        targetListSelect.classList.add('hidden');
+        firstListNameInput.classList.remove('hidden');
+        firstListNameInput.value = ''; // Clear any previous value
+        if (addItemsBtn) addItemsBtn.disabled = true; // Disable add button initially
 
-    if (sortedLists.length === 0) {
-        targetListSelect.disabled = true;
-        if (addItemsBtn) addItemsBtn.disabled = true;
+        // Add temporary listener to enable Add button when input has text
+        firstListNameInput.oninput = () => {
+            if (addItemsBtn) addItemsBtn.disabled = firstListNameInput.value.trim() === '';
+        };
+
     } else {
-        targetListSelect.disabled = false;
+        // LISTS EXIST: Show dropdown, hide input field
+        // console.log("[updateTargetListDropdown] Lists exist. Showing dropdown.");
+        targetListSelect.classList.remove('hidden');
+        firstListNameInput.classList.add('hidden');
+        if (firstListNameInput.oninput) firstListNameInput.oninput = null; // Remove listener
+
+        targetListSelect.innerHTML = '<option value="" disabled selected>Select list to add items to...</option>';
+        const sortedLists = Object.values(shoppingLists).sort((a, b) => a.name.localeCompare(b.name));
+        let firstListId = null;
+
         sortedLists.forEach((list, index) => {
             if (index === 0) firstListId = list.id;
             const option = document.createElement('option');
@@ -256,15 +276,17 @@ function updateTargetListDropdown() {
             targetListSelect.appendChild(option);
         });
         
+        // Restore previous selection or select first list
         if (shoppingLists[currentSelection]) {
             targetListSelect.value = currentSelection;
         } else if (firstListId) {
              targetListSelect.value = firstListId;
         }
         
+        // Enable/disable Add button based on dropdown selection
          if (addItemsBtn) addItemsBtn.disabled = !targetListSelect.value;
     }
-    // console.log('[updateTargetListDropdown] Finished. Disabled:', targetListSelect.disabled, 'Value:', targetListSelect.value);
+    // console.log('[updateTargetListDropdown] Finished.');
 }
 
 // --- Dynamic Stylesheet --- 
@@ -776,8 +798,9 @@ function renderListContentStructure(list) {
 
         const datalist = document.createElement('datalist');
         datalist.id = `itemSuggestions-${list.id}`;
-        // Datalist will be populated later or by updateKnownItem
         singleAddSection.appendChild(datalist);
+        // Populate the datalist immediately after creation
+        populateItemDatalist(datalist);
 
         const qtyInput = document.createElement('input');
         qtyInput.type = 'number';
@@ -1023,11 +1046,65 @@ function toggleItemDone(listId, itemId) {
 
 // --- Item Input / Parsing / Adding --- 
 function addItemsToList() {
+    const firstListNameInput = document.getElementById('firstListNameInput');
+    const isFirstListScenario = firstListNameInput && !firstListNameInput.classList.contains('hidden');
+    let targetListId = null;
+
+    // console.log(`[addItemsToList] Triggered. isFirstListScenario: ${isFirstListScenario}`);
+
+    if (isFirstListScenario) {
+        // --- Scenario: Create First List --- 
+        const firstListName = firstListNameInput.value.trim();
+        if (!firstListName) {
+            alert("Please enter a name for the first list."); 
+            firstListNameInput.focus();
+            return;
+        }
+        // console.log(`[addItemsToList] Attempting to create first list: "${firstListName}"`);
+        const newListId = createNewList(firstListName);
+        if (!newListId) {
+            // createNewList shows its own alerts (e.g., duplicate)
+            firstListNameInput.focus();
+            return; // Stop if list creation failed
+        }
+        targetListId = newListId; // Set target ID for adding items
+        // updateTargetListDropdown() will be called by createNewList via renderTabsAndContent,
+        // switching back to the dropdown view automatically.
+        // console.log(`[addItemsToList] First list created with ID: ${targetListId}`);
+    } else {
+        // --- Scenario: Add to Existing List --- 
+        if (!targetListSelect) { console.error("addItemsToList: targetListSelect missing."); return; } // KEEP Error
+        targetListId = targetListSelect.value;
+        if (!targetListId) { 
+            alert("Please select a list from the dropdown first!"); 
+            return; 
+        }
+        // console.log(`[addItemsToList] Adding items to existing list ID: ${targetListId}`);
+    }
+
+    // --- Common Logic: Parse and Add Items --- 
+    if (!listInput) { console.error("addItemsToList: listInput missing."); return; } // KEEP Error
+    const currentList = shoppingLists[targetListId];
+    if (!currentList) { 
+        alert(`Error: Could not find list with ID ${targetListId}. Please refresh.`); 
+        return; 
+    }
+
+    const inputText = listInput.value;
+    const itemsArray = inputText.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    const newItems = itemsArray.map(parseItemString).filter(item => item !== null);
+    
+    if (newItems.length === 0 && inputText.trim() !== '') {
+        alert("Could not parse any valid items from the input.");
+        return;
+    } else if (newItems.length === 0) {
+        alert("Please enter items to add.");
+        return;
+    }
+
     let addedCount = 0;
     let skippedCount = 0;
-    // Use a for...of loop instead of forEach to potentially avoid syntax issues
     for (const newItem of newItems) {
-        // Check for duplicates (case-insensitive name, same category, same quantity, not done)
         const exists = currentList.items.some(existingItem => 
             existingItem.name.toLowerCase() === newItem.name.toLowerCase() && 
             existingItem.category === newItem.category && 
@@ -1036,30 +1113,26 @@ function addItemsToList() {
         );
         if (!exists) {
             currentList.items.push(newItem);
-            updateKnownItem(newItem); // Update cache
+            // Pass list ID to updateKnownItem for context if needed later?
+            updateKnownItem(newItem); 
             addedCount++;
         } else {
-             // console.log(`[addItemsToList] Skipping duplicate item: ${newItem.name}`);
              skippedCount++;
          }
-    } // End of for...of loop
-
-    // console.log(`[addItemsToList] Added: ${addedCount}, Skipped (duplicates): ${skippedCount}`);
+    } 
 
     if (addedCount > 0) {
-        renderItemsForList(selectedListId); 
+        renderItemsForList(targetListId); 
         saveState(); 
-        listInput.value = ''; // Clear input only if items were added
-        switchTab(`list-${selectedListId}`); // Switch to the list
+        listInput.value = ''; // Clear item input
+        if (!isFirstListScenario) {
+            switchTab(`list-${targetListId}`); // Switch only if not creating first list (createNewList handles that)
+        }
     } else if (skippedCount > 0 && addedCount === 0) {
         alert("All items entered were already on the active list.");
-        // Maybe don't clear input or switch tab here?
-    } else if (newItems.length === 0){
-         alert("Please enter items to add.");
-         // Don't clear or switch
     } else {
-        // No items added, none skipped - likely means input was empty after trim/filter
-         alert("Please enter items to add.");
+        // Should not happen based on earlier check, but as a fallback:
+         alert("No items were added.");
     }
 }
 
@@ -1175,7 +1248,8 @@ function createNewList(listName) {
     // Switch to the newly created list tab
     switchTab(`list-${newListId}`);
 
-    return true; // Indicate success
+    // Return the ID of the newly created list
+    return newListId; 
 }
 
 function deleteList(listIdToDelete) {

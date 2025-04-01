@@ -91,7 +91,8 @@ h1 {
 
 #listNameInput, 
 #listInput,
-#targetListSelect /* Added */ {
+#targetListSelect,
+#firstListNameInput /* Added */ {
     flex-grow: 1;
     padding: 10px;
     border: 1px solid #555;
@@ -102,11 +103,12 @@ h1 {
     box-sizing: border-box; /* Ensure padding/border included in height */
 }
 
-#targetListSelect {
-    flex-basis: 100%; /* Make dropdown take full width initially */
-    margin-bottom: 10px; /* Add space below dropdown */
-    max-width: none; /* Override potential inherited max-width */
-    min-height: 40px; /* Set min-height instead */
+#targetListSelect,
+#firstListNameInput /* Added */ {
+    flex-basis: 100%; /* Make dropdown/input take full width initially */
+    margin-bottom: 10px; /* Add space below */
+    max-width: none; 
+    min-height: 40px; 
 }
 
 #listInput {
@@ -122,7 +124,7 @@ h1 {
     gap: 5px; /* Gap between buttons if needed */
 }
 
-.paste-btn,
+#pasteBtn,
 #addItemsBtn {
     padding: 8px 10px; /* Reduced padding */
     background-color: #6ab04c; 
@@ -138,13 +140,13 @@ h1 {
     line-height: 1.2; /* Adjust line height for better vertical centering */
 }
 
-.paste-btn {
+#pasteBtn {
     background-color: #5a5a5a; /* Different color for paste */
     color: #e0e0e0;
     display: none; /* Hidden by default */
 }
 
-.paste-btn:hover {
+#pasteBtn:hover {
      background-color: #6a6a6a;
 }
 
@@ -167,7 +169,8 @@ h1 {
 
 /* Responsive adjustments for select */
 @media (min-width: 601px) {
-    #targetListSelect {
+    #targetListSelect,
+    #firstListNameInput /* Added */ {
         flex-basis: 200px; 
         flex-grow: 0;
         margin-bottom: 0;
@@ -181,7 +184,7 @@ h1 {
         flex-wrap: nowrap; 
         align-items: flex-start; /* Ensure top alignment */
     }
-    .paste-btn {
+    #pasteBtn {
         display: none !important; /* Ensure paste btn is hidden on desktop */
     }
     #addItemsBtn {
@@ -468,7 +471,7 @@ h2 {
         display: contents; /* Remove the group's flex layout, treat children as direct children of input-area */
     }
 
-    .paste-btn,
+    #pasteBtn,
     .input-area.add-items-section #addItemsBtn {
         display: block; /* Make buttons block level */
         width: 100%; /* Make buttons full width */
@@ -953,6 +956,11 @@ h2 {
 
 #mobileNavPanel .temp-list-name-input {
     flex-grow: 1; /* Allow input to take available space */
+}
+
+/* Utility class to hide elements */
+.hidden {
+    display: none !important; /* Use !important to override potential inline styles if needed */
 }
 
 /* ... rest of styles ... */
