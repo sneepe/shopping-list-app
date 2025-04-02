@@ -6,6 +6,7 @@
     <title>Multi-List Shopper</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <meta name="theme-color" content="#333333">
 </head>
 <body>
@@ -16,13 +17,19 @@
 
         <div class="tabs desktop-tabs" id="tabContainer">
             <button class="tab-button active" data-tab="inputTab">Manage Items</button>
-            <!-- Dynamic list tabs will be inserted here for desktop -->
+            <!-- Container specifically for sortable list tabs -->
+            <div id="desktop-list-tabs" class="sortable-list-tabs">
+                <!-- Dynamic list tabs will be inserted here for desktop -->
+            </div>
             <button id="addListTabBtn" class="tab-button add-tab-btn" title="Create New List">+</button>
         </div>
 
         <div class="mobile-nav" id="mobileNavPanel">
              <button class="tab-button mobile-tab-button active" data-tab="inputTab">Manage Items</button>
-             <!-- Dynamic list tabs will be inserted here for mobile -->
+             <!-- Container specifically for sortable list tabs -->
+             <div id="mobile-list-tabs" class="sortable-list-tabs">
+                <!-- Dynamic list tabs will be inserted here for mobile -->
+            </div>
              <button id="addListMobileBtn" class="mobile-tab-button add-tab-btn">+ Add New List</button>
         </div>
 
@@ -82,6 +89,26 @@
         </div>
 
     </div>
+    <!-- SortableJS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Your Custom Script -->
     <script src="script.js"></script>
 </body>
+
+<!-- Item Edit Modal (Initially Hidden) -->
+<div id="editItemModal" class="modal-overlay">
+    <div class="modal-content">
+        <h2>Edit Item</h2>
+        <input type="text" id="editNameInput" required placeholder="Item Name">
+        <input type="number" id="editQtyInput" placeholder="Quantity (optional)" min="1">
+        <select id="editCategorySelect">
+            <!-- Options populated by JS -->
+        </select>
+        <div class="modal-controls">
+            <button id="editModalSaveBtn">Save</button>
+            <button id="editModalCancelBtn">Cancel</button>
+        </div>
+    </div>
+</div>
+
 </html> 

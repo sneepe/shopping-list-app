@@ -139,6 +139,24 @@ function loadState() {
             }
         }
 
+        // --- Assign Order to Lists if Missing --- 
+        let maxOrder = -1;
+        const listArray = Object.values(shoppingLists);
+        listArray.forEach(list => {
+            if (typeof list.order !== 'number' || list.order < 0) {
+                list.order = -1; // Mark for assignment
+            }
+            if (list.order > maxOrder) {
+                maxOrder = list.order;
+            }
+        });
+        // Assign sequential order starting from maxOrder + 1 for those missing it
+        listArray.filter(list => list.order === -1).forEach(list => {
+            maxOrder++;
+            list.order = maxOrder;
+        });
+        // console.log("[loadState] Assigned/verified order property for lists.");
+
         // --- Final Check for valid category config before proceeding ---
         if (!currentCategoryConfig || typeof currentCategoryConfig !== 'object' || !currentCategoryConfig.default || typeof currentCategoryConfig.default !== 'object') {
              console.error("[loadState] CRITICAL: currentCategoryConfig is invalid before validation/rendering!", JSON.parse(JSON.stringify(currentCategoryConfig))); // KEEP Error
@@ -224,6 +242,9 @@ function continueLoadSequence() {
             // Populate datalists AFTER the initial tab has been switched
             populateAllDatalists();
 
+            // Initialize SortableJS AFTER tabs are rendered and populated
+            initializeSortableTabs();
+
             // console.log("[continueLoadSequence] Finished."); 
         });
 }
@@ -265,7 +286,11 @@ function updateTargetListDropdown() {
         if (firstListNameInput.oninput) firstListNameInput.oninput = null; // Remove listener
 
         targetListSelect.innerHTML = '<option value="" disabled selected>Select list to add items to...</option>';
-        const sortedLists = Object.values(shoppingLists).sort((a, b) => a.name.localeCompare(b.name));
+        // Sort by order for consistency with tabs, then name
+        const sortedLists = Object.values(shoppingLists).sort((a, b) => {
+            const orderDiff = (a.order || 0) - (b.order || 0);
+            return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name);
+        });
         let firstListId = null;
 
         sortedLists.forEach((list, index) => {
@@ -601,38 +626,9 @@ function addSingleItem(listId, nameInput, qtyInput, categorySelect) {
 }
 
 // --- Long Press, Hamburger, Tab Management, List Create/Delete, Item Parsing --- 
-function handlePointerDown(event, listId, itemId) {
-    const card = event.target.closest('.item-card');
-    if (!card || !card.closest('.completed-list')) return; // Only for completed items
-
-    longPressDetected = false;
-    pressTimer = setTimeout(() => {
-        longPressDetected = true;
-        card.style.transform = 'scale(0.95)'; 
-        const itemToDelete = shoppingLists[listId]?.items.find(i => i.id === itemId);
-        if (itemToDelete && confirm(`Permanently delete item "${itemToDelete.name}"?`)) {
-            deleteItem(listId, itemId);
-        } else {
-             // Reset style immediately if cancelled
-            card.style.transform = 'scale(1)'; 
-        }
-    }, LONG_PRESS_DURATION);
-}
-
-function handlePointerUpOrLeave(event) {
-    const card = event.target.closest('.item-card');
-    if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-    }
-    if (card) card.style.transform = 'scale(1)'; // Reset style regardless
-    if (longPressDetected) {
-        event.preventDefault(); 
-        event.stopPropagation(); // Prevent click toggle
-        // console.log("[handlePointerUpOrLeave] Long press detected, preventing click."); // DEBUG
-    }
-    longPressDetected = false;
-}
+// REMOVED old handlePointerDown and handlePointerUpOrLeave functions
+// function handlePointerDown(event, listId, itemId) { ... }
+// function handlePointerUpOrLeave(event) { ... }
 
 // --- Hamburger Menu Logic --- 
 function toggleMobileNav(show) {
@@ -716,17 +712,59 @@ function renderTabsAndContent() {
     mobileNavPanel.querySelectorAll('.list-tab-button').forEach(btn => btn.remove());
     listContentContainer.innerHTML = ''; // Clear old list content panes
     
-    const sortedLists = Object.values(shoppingLists).sort((a, b) => a.name.localeCompare(b.name));
-    // console.log(`[renderTabsAndContent] Rendering ${sortedLists.length} lists.`); 
+    tabContainer.innerHTML = ''; // Clear existing desktop tabs
+    mobileNavPanel.innerHTML = ''; // Clear existing mobile tabs
 
+    // Add the static "Manage Items" tab first
+    const manageItemsDesktopTab = createTabElement("Manage Items", 'inputTab', activeListId === null || activeListId === 'inputTab');
+    tabContainer.appendChild(manageItemsDesktopTab);
+    const manageItemsMobileTab = createTabElement("Manage Items", 'inputTab', activeListId === null || activeListId === 'inputTab', true);
+    mobileNavPanel.appendChild(manageItemsMobileTab);
+
+    // Add container for sortable desktop list tabs
+    const desktopListTabContainer = document.createElement('div');
+    desktopListTabContainer.id = 'desktop-list-tabs';
+    desktopListTabContainer.classList.add('sortable-list-tabs');
+    tabContainer.appendChild(desktopListTabContainer);
+
+    // Add container for sortable mobile list tabs
+    const mobileListTabContainer = document.createElement('div');
+    mobileListTabContainer.id = 'mobile-list-tabs';
+    mobileListTabContainer.classList.add('sortable-list-tabs');
+    mobileNavPanel.appendChild(mobileListTabContainer);
+
+    // Get lists and sort them by the 'order' property
+    const sortedLists = Object.values(shoppingLists).sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // Clear old content panes *before* potentially creating new ones
+    if (listContentContainer) listContentContainer.innerHTML = '';
+
+    // Create tabs and content structures for each list
     sortedLists.forEach(list => {
-        if (list && list.id) { 
-            renderListTab(list); 
-            renderListContentStructure(list); 
-            renderItemsForList(list.id); 
-        } else { console.warn('[renderTabsAndContent] Skipping render for invalid list object:', list); } // KEEP Warn
+        const isActive = activeListId === list.id;
+        const desktopTab = createTabElement(list.name, `list-${list.id}`, isActive);
+        desktopTab.dataset.listId = list.id; // Add listId for sortable
+        desktopListTabContainer.appendChild(desktopTab); // Append to specific container
+
+        const mobileTab = createTabElement(list.name, `list-${list.id}`, isActive, true);
+        mobileTab.dataset.listId = list.id; // Add listId for sortable
+        mobileListTabContainer.appendChild(mobileTab); // Append to specific container
+
+        // Ensure content structure exists (important for sortable)
+        renderListContentStructure(list);
     });
-    
+
+    // Add the '+' button after the list tab containers
+    const addListDesktopBtn = createAddListButton(false);
+    tabContainer.appendChild(addListDesktopBtn);
+    const addListMobileBtn = createAddListButton(true);
+    mobileNavPanel.appendChild(addListMobileBtn);
+
+    // ** Re-render items for ALL lists after structure is built **
+    Object.keys(shoppingLists).forEach(listId => {
+        renderItemsForList(listId);
+    });
+
     // Determine which tab should be active after re-render
     let targetTabIdToActivate;
     if (inputTabWasActive) {
@@ -960,9 +998,6 @@ function renderItemsForList(listId, poppedItemId = null) {
         completedItems.forEach(item => {
             // Pass poppedItemId to createItemCard
             const card = createItemCard(item, listId, poppedItemId === item.id); 
-            card.addEventListener('pointerdown', (e) => handlePointerDown(e, listId, item.id));
-            card.addEventListener('pointerup', handlePointerUpOrLeave);
-            card.addEventListener('pointerleave', handlePointerUpOrLeave);
             completedContainer.appendChild(card);
         });
     } else {
@@ -973,51 +1008,129 @@ function renderItemsForList(listId, poppedItemId = null) {
 }
 
 
-// --- Card Creation --- 
+// --- Card Creation ---
+// Corrected version
 function createItemCard(item, listId, isPoppingIn = false) {
     const card = document.createElement('div');
+    // Apply base classes: item-card, category-*, done
     card.className = `item-card category-${item.category || 'default'} ${item.done ? 'done' : ''}`;
     card.dataset.itemId = item.id;
-    card.dataset.listId = listId;
-    card.dataset.category = item.category || 'default';
+    card.dataset.listId = listId; // Store listId for handlers
 
     // --- Apply Pop-in animation if needed ---
     if (isPoppingIn) {
         // console.log(`[createItemCard] Applying pop-in to item ${item.id}`);
-        card.classList.add('popping-in');
+        // Determine animation based on done state
+        const animationClass = item.done ? 'sliding-to-completed' : 'sliding-from-completed';
+        card.classList.add(animationClass);
+        // Remove animation class after animation ends
         card.addEventListener('animationend', () => {
-            if (card.classList.contains('popping-in')) { 
-                 // console.log(`[createItemCard] Pop-in animation ended for ${item.id}, removing class.`);
-                 card.classList.remove('popping-in');
-            }
-        }, { once: true }); 
+            card.classList.remove('popping-in', 'sliding-to-completed', 'sliding-from-completed'); // Remove all potential animation classes
+        }, { once: true });
     }
 
-    // Create nameSpan
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'item-name';
-    nameSpan.textContent = item.name;
-    card.appendChild(nameSpan);
+    const cardContent = document.createElement('div');
+    cardContent.classList.add('item-card-content'); // Wrapper for name/qty
 
-    // Display quantity only if > 1
-    if (item.quantity && item.quantity > 1) {
-        const detailsSpan = document.createElement('span');
-        detailsSpan.className = 'item-details';
-        detailsSpan.textContent = `x${item.quantity}`;
-        card.appendChild(detailsSpan);
+    const itemName = document.createElement('span');
+    itemName.classList.add('item-name');
+    itemName.textContent = item.name;
+    cardContent.appendChild(itemName);
+
+    if (item.quantity) { // Show quantity if it exists (could be 1 or more)
+        const itemQuantity = document.createElement('span');
+        itemQuantity.classList.add('item-quantity');
+        itemQuantity.textContent = ` x${item.quantity}`;
+        cardContent.appendChild(itemQuantity);
     }
 
-    // Add click handler for toggling done state
-    card.addEventListener('click', (e) => {
-        if (!longPressDetected) { 
-             toggleItemDone(listId, item.id);
+    card.appendChild(cardContent);
+
+    // --- Controls (No visible controls; Edit via Long Press) ---
+    // const cardControls = document.createElement('div');
+    // cardControls.classList.add('item-card-controls');
+    
+    // // Delete Button - REMOVED
+    // const deleteBtn = document.createElement('button');
+    // deleteBtn.classList.add('delete-item-btn');
+    // deleteBtn.textContent = 'X';
+    // deleteBtn.title = 'Delete Item';
+    // deleteBtn.addEventListener('click', (e) => { ... });
+    // cardControls.appendChild(deleteBtn);
+
+    // card.appendChild(cardControls);
+
+    // --- Event Listeners for Interaction ---
+    // Need to reset longPressDetected for each card instance scope
+    let longPressDetected = false;
+
+    // Click to toggle done status
+    card.addEventListener('click', () => {
+        // Only toggle if not in edit mode (add check later if needed)
+        // and if long press didn't happen for this specific interaction
+        if (!card.classList.contains('editing') && !longPressDetected) {
+            // console.log(`[Click] Toggling item: ${item.name}, longPressDetected: ${longPressDetected}`);
+            toggleItemDone(listId, item.id);
         } else {
-             // console.log("[createItemCard] Click prevented due to long press flag.");
+             // console.log(`[Click] Prevented toggle for: ${item.name}, longPressDetected: ${longPressDetected}`);
+             // Reset flag after a prevented click due to long press?
+             // longPressDetected = false; // Resetting in endPress/touchcancel/mouseleave seems sufficient
         }
     });
 
+    // Long press detection (ONLY for ACTIVE items triggers edit)
+    let pressTimer = null;
+
+    const startPress = (e) => {
+        // Only start timer for ACTIVE items
+        if (!item.done) {
+            // console.log(`[startPress] Active item: ${item.name}, Type: ${e.type}`);
+            longPressDetected = false; // Reset flag on new press start
+            clearTimeout(pressTimer); // Clear any lingering timer
+            pressTimer = setTimeout(() => {
+                longPressDetected = true; // Set flag when timer completes
+                // console.log(`[startPress] Long press timeout reached for: ${item.name}`);
+                if (navigator.vibrate) navigator.vibrate(50);
+                card.classList.add('long-press-active'); // Add visual feedback
+                // Edit is triggered in endPress based on the flag
+            }, LONG_PRESS_DURATION);
+        }
+    };
+
+    const endPress = (e) => {
+        // console.log(`[endPress] Fired for: ${item.name}, Detected flag: ${longPressDetected}, Type: ${e.type}`);
+        const wasLongPress = longPressDetected; // Capture state before clearing timer
+        clearTimeout(pressTimer); // Always clear timer
+        card.classList.remove('long-press-active'); // Remove feedback style
+
+        if (wasLongPress && !item.done) {
+             // console.log(`[endPress] Long press confirmed for: ${item.name}. Preventing default click.`);
+             // Prevent the default click action (toggleItemDone)
+             e.stopPropagation();
+             e.preventDefault();
+             startItemEdit(listId, item.id); // Trigger edit for active item long press
+        }
+        // Reset flag AFTER processing the end event
+        longPressDetected = false;
+    };
+
+    const cancelPress = () => {
+         // console.log(`[cancelPress] Fired for: ${item.name}`);
+         clearTimeout(pressTimer);
+         card.classList.remove('long-press-active');
+         longPressDetected = false; // Reset flag on cancel
+    };
+
+    // Add listeners for mouse and touch events
+    card.addEventListener('mousedown', startPress);
+    card.addEventListener('touchstart', startPress, { passive: true }); // Passive might be okay if not preventing scroll explicitly
+    card.addEventListener('mouseup', endPress);
+    card.addEventListener('mouseleave', cancelPress); // Use cancelPress for clarity
+    card.addEventListener('touchend', endPress);
+    card.addEventListener('touchcancel', cancelPress); // Use cancelPress for clarity
+
     return card;
-}
+} // End of createItemCard
 
 function toggleItemDone(listId, itemId) {
     // console.log(`[toggleItemDone] Toggling item ${itemId} in list ${listId} using SHRINK/POP`);
@@ -1042,18 +1155,16 @@ function toggleItemDone(listId, itemId) {
     // --- State Update & Re-render after Shrink ---
     setTimeout(() => {
         // console.log(`[toggleItemDone] Shrink timeout reached for ${itemId}. Updating state and re-rendering.`);
-        const wasDone = item.done; // Check state *before* toggling
+        const wasDone = item.done; 
         item.done = !item.done; 
-        // console.log(`[toggleItemDone] Item state toggled to done: ${item.done}.`);
         
-        // If item was moved from completed back to active, increment its count via updateKnownItem
+        // If item was moved from completed back to active, increment its count
         if (wasDone && !item.done) {
-            // console.log(`[toggleItemDone] Item "${item.name}" moved back to active list. Incrementing count.`);
-            updateKnownItem(item); // updateKnownItem handles incrementing count and saving state
-        } else {
-            // If item was just completed (active -> done), just save the state change
-            saveState(); 
-        }
+            updateKnownItem(item); // Update cache count
+        } // No 'else' needed here anymore
+        
+        // ALWAYS save state after toggling 'done' status
+        saveState(); 
         
         // Always re-render the list after the state change
         renderItemsForList(listId, itemId); 
@@ -1249,8 +1360,10 @@ function createNewList(listName) {
     }
 
     const newListId = generateId();
-    shoppingLists[newListId] = { id: newListId, name: listName, items: [] };
-    // console.log(`[createNewList] Created new list: ${listName} (${newListId})`);
+    // Find the highest current order number
+    const maxExistingOrder = Object.values(shoppingLists).reduce((max, list) => Math.max(max, list.order || 0), -1);
+    shoppingLists[newListId] = { id: newListId, name: listName, items: [], order: maxExistingOrder + 1 };
+    // console.log(`[createNewList] Created new list: ${listName} (${newListId}) with order ${shoppingLists[newListId].order}`);
 
     renderTabsAndContent(); // Re-render UI (includes new tab and content pane)
     updateTargetListDropdown(); // Update the main dropdown
@@ -1666,6 +1779,124 @@ function clearCompletedItems(listId) {
     }
 }
 
+// --- Item Editing (Revised for Modal) --- 
+// Global reference to the currently edited item's IDs
+let currentlyEditing = null; 
+// Global reference to modal elements (assigned in DOMContentLoaded)
+let editItemModal, editNameInput, editQtyInput, editCategorySelect, editModalSaveBtn, editModalCancelBtn;
+
+function startItemEdit(listId, itemId) {
+    console.log(`[startItemEdit - Modal] Triggered for item ${itemId} in list ${listId}`);
+    const list = shoppingLists[listId];
+    if (!list) { console.error(`[startItemEdit] List not found: ${listId}`); return; }
+    const itemIndex = list.items.findIndex(i => i.id === itemId);
+    if (itemIndex === -1) { console.error(`[startItemEdit] Item data not found for item ${itemId}`); return; }
+    const item = list.items[itemIndex];
+
+    currentlyEditing = { listId, itemId }; // Store reference
+
+    // Populate modal fields (Ensure modal elements are assigned in DOMContentLoaded)
+    if (editNameInput) editNameInput.value = item.name;
+    if (editQtyInput) editQtyInput.value = item.quantity || '';
+    if (editCategorySelect) {
+        populateSingleItemCategorySelect(editCategorySelect); // Ensure options are up-to-date
+        editCategorySelect.value = item.category || '';
+    }
+    
+    // Show the modal (Implementation assumes modal element exists)
+    if (editItemModal) {
+        editItemModal.style.display = 'flex'; // Or 'block'
+        // Focus first field
+        if(editNameInput) editNameInput.focus();
+    } else {
+        console.error("[startItemEdit] Edit modal element not found!");
+    }
+} 
+
+function handleSaveItemEdit(/* Reads from modal/global state */) {
+    console.log(`[handleSaveItemEdit - Modal] Save triggered.`);
+    if (!currentlyEditing) return;
+    
+    // Ensure modal elements are available
+    if (!editNameInput || !editQtyInput || !editCategorySelect) {
+        console.error("[handleSaveItemEdit] Modal input elements not found!");
+        return;
+    }
+
+    const { listId, itemId } = currentlyEditing;
+
+    // --- Get values from MODAL --- 
+    const newName = editNameInput.value.trim();
+    const qtyValue = editQtyInput.value.trim();
+    const newQuantity = qtyValue ? parseInt(qtyValue, 10) : null; 
+    const newCategory = editCategorySelect.value || null; 
+
+    // --- Validate --- 
+    if (!newName) {
+        alert("Item name cannot be empty.");
+        editNameInput.focus();
+        return; // Keep modal open
+    }
+    if (newQuantity !== null && (isNaN(newQuantity) || newQuantity < 1)) {
+        alert("Quantity must be a positive number or empty.");
+        editQtyInput.focus();
+        return; // Keep modal open
+    }
+
+    // --- Update Data --- 
+    const list = shoppingLists[listId];
+    if (!list) { console.error("Save Error: List not found"); hideEditModal(); return; } 
+    const itemIndex = list.items.findIndex(i => i.id === itemId);
+    if (itemIndex === -1) { console.error("Save Error: Item not found"); hideEditModal(); return; } 
+
+    const itemToUpdate = list.items[itemIndex];
+    const changed = itemToUpdate.name !== newName || itemToUpdate.quantity !== newQuantity || itemToUpdate.category !== newCategory;
+
+    if (changed) {
+        itemToUpdate.name = newName;
+        itemToUpdate.quantity = newQuantity;
+        itemToUpdate.category = newCategory;
+        updateKnownItem(itemToUpdate); 
+        saveState();
+        hideEditModal(); 
+        renderItemsForList(listId); 
+    } else {
+        // console.log("[handleSaveItemEdit] No changes detected.");
+        hideEditModal(); // Close modal even if no changes
+    }
+}
+
+// Function to hide the modal
+function hideEditModal() {
+     // console.log("[hideEditModal] Hiding modal.");
+     if (editItemModal) {
+         editItemModal.style.display = 'none';
+     }
+     currentlyEditing = null; // Clear reference
+}
+
+// --- Helper function to create tabs --- 
+function createTabElement(text, tabId, isActive, isMobile = false) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.dataset.tab = tabId;
+    button.className = isMobile ? 'tab-button mobile-tab-button' : 'tab-button';
+    if (isActive) button.classList.add('active');
+    button.addEventListener('click', () => switchTab(tabId));
+    return button;
+}
+
+// --- Helper function to create Add List buttons ---
+function createAddListButton(isMobile) {
+     const button = document.createElement('button');
+     button.textContent = isMobile ? '+ Add New List' : '+';
+     button.title = 'Create New List';
+     button.className = isMobile ? 'mobile-tab-button add-tab-btn' : 'tab-button add-tab-btn';
+     button.id = isMobile ? 'addListMobileBtn' : 'addListTabBtn';
+     button.addEventListener('click', () => showCreateListInput(button));
+     return button;
+}
+
 // ==================================================
 // === DOMContentLoaded - INITIALIZATION & LISTENERS ==
 // ==================================================
@@ -1698,6 +1929,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add list buttons
     const addListTabBtn = document.getElementById('addListTabBtn');
     const addListMobileBtn = document.getElementById('addListMobileBtn');
+    // Edit Modal elements
+    editItemModal = document.getElementById('editItemModal');
+    editNameInput = document.getElementById('editNameInput');
+    editQtyInput = document.getElementById('editQtyInput');
+    editCategorySelect = document.getElementById('editCategorySelect');
+    editModalSaveBtn = document.getElementById('editModalSaveBtn');
+    editModalCancelBtn = document.getElementById('editModalCancelBtn');
 
     // --- Check if essential elements were found ---
     let essentialElementsFound = true;
@@ -1787,5 +2025,103 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Edit Modal Listeners
+    if (editModalSaveBtn) {
+        editModalSaveBtn.addEventListener('click', handleSaveItemEdit); 
+    }
+    if (editModalCancelBtn) {
+        editModalCancelBtn.addEventListener('click', hideEditModal);
+    }
+    // Optional: Add Escape key listener to close modal
+    if (editItemModal) {
+         editItemModal.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                hideEditModal();
+            }
+         });
+        // Optional: Close modal on overlay click
+         editItemModal.addEventListener('click', (event) => {
+            if (event.target === editItemModal) { // Check if click is directly on the overlay
+                hideEditModal();
+            }
+        });
+    }
+
     // console.log("[DOMContentLoaded] Initialization complete.");
-}); // End of the single DOMContentLoaded wrapper
+
+    // --- Initial Load & Sortable Init ---
+    loadState(); // Load data, which now includes order
+    // initializeSortableTabs(); // REMOVED Call from here - Moved to end of continueLoadSequence
+
+}); // END of DOMContentLoaded
+
+// --- SortableJS Initialization --- 
+function initializeSortableTabs() {
+    // console.log("[initializeSortableTabs] Initializing...");
+    // Target the specific sortable containers now
+    const desktopSortableContainer = document.getElementById('desktop-list-tabs');
+    const mobileSortableContainer = document.getElementById('mobile-list-tabs');
+
+    const sortableOptions = {
+        animation: 150, 
+        // No filter needed anymore as fixed elements are outside the sortable container
+        // filter: ".add-tab-btn, [data-tab='inputTab']", 
+        // preventOnFilter: true, 
+        onUpdate: function (evt) {
+            const container = evt.from; 
+            updateListOrder(container);
+        },
+    };
+
+    if (desktopSortableContainer) {
+        new Sortable(desktopSortableContainer, sortableOptions);
+    } else {
+        console.warn("[initializeSortableTabs] Desktop sortable list container not found.");
+    }
+
+    if (mobileSortableContainer) {
+         new Sortable(mobileSortableContainer, sortableOptions);
+    } else {
+        console.warn("[initializeSortableTabs] Mobile sortable list container not found.");
+    }
+}
+
+// --- Update List Order --- 
+function updateListOrder(containerElement) {
+    // console.log("[updateListOrder] Updating order based on container:", containerElement.id);
+    const childButtons = Array.from(containerElement.children);
+    let currentOrder = 0;
+    let changesMade = false;
+
+    childButtons.forEach(button => {
+        const listId = button.dataset.listId;
+        if (listId && shoppingLists[listId]) {
+            // console.log(`[updateListOrder] Found list tab: ${shoppingLists[listId].name} (ID: ${listId})`);
+            if (shoppingLists[listId].order !== currentOrder) {
+                // console.log(` - Updating order from ${shoppingLists[listId].order} to ${currentOrder}`);
+                shoppingLists[listId].order = currentOrder;
+                changesMade = true;
+            }
+            currentOrder++;
+        } else if (button.dataset.tab === 'inputTab') {
+             // console.log("[updateListOrder] Found Manage Items tab, skipping order assignment.");
+        } else if (button.classList.contains('add-tab-btn')) {
+             // console.log("[updateListOrder] Found Add button, skipping order assignment.");
+        } else {
+            // console.log("[updateListOrder] Found unexpected element:", button);
+        }
+    });
+
+    if (changesMade) {
+        // console.log("[updateListOrder] Order changed, saving state.");
+        saveState();
+        // Optional: Force re-render tabs if needed, though visual order is already changed.
+        // renderTabsAndContent(); // Usually not needed just for order change
+    } else {
+         // console.log("[updateListOrder] No order changes detected.");
+    }
+}
+
+
+// --- Tab Switching Logic --- 
+// ... existing code ...
