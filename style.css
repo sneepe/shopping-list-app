@@ -802,11 +802,16 @@ h2 {
     /* flex-wrap: wrap; Removed - aim for single line */
     align-items: center; /* Vertically center items on the line */
     border: 1px solid #444;
-    padding: 10px 15px;
+    padding: 10px 15px; /* Keep L/R/B padding */
     border-radius: 5px;
     background-color: #333; 
     margin-bottom: 25px; /* Space below single add */
     gap: 8px; /* Reduced gap */
+
+    /* Add separator from content above */
+    margin-top: 20px;       /* Space above the separator line */
+    border-top: 1px solid #555; /* The separator line */
+    padding-top: 15px;      /* Space between the line and the input fields */
 }
 
 
@@ -1149,4 +1154,44 @@ h2 {
 .sortable-list-tabs {
     display: contents; /* Treat children as direct children of the flex container */
     /* Alternative: display: flex; flex-grow: 1; etc. if needed, but contents is often simpler */
+}
+
+/* Container for action buttons below list title */
+.list-action-buttons {
+    display: flex;
+    justify-content: center; /* Center buttons */
+    gap: 10px; /* Space between buttons */
+    margin-bottom: 15px; /* Space below buttons */
+    flex-wrap: wrap; /* Allow wrapping */
+}
+
+/* Individual action button style */
+.action-btn {
+    padding: 8px 12px;
+    background-color: #4a4a4a; /* Dark grey, adjust as needed */
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.2s ease;
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 6px; /* Space between icon and text */
+}
+
+.action-btn i {
+    font-size: 1.1em; /* Make icons slightly larger */
+}
+
+.action-btn:hover {
+    background-color: #5a5a5a;
+}
+
+/* Example specific style if needed */
+.start-shopping-btn {
+    background-color: #4a7db1; /* Blue */
+}
+.start-shopping-btn:hover {
+     background-color: #5a8dc1;
 }

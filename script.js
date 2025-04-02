@@ -821,14 +821,50 @@ function renderListContentStructure(list) {
         heading.textContent = list.name;
         contentDiv.appendChild(heading);
 
-        // --- Create Single Item Add Section --- 
+        // --- Create NEW Action Buttons Section ---
+        const actionBtnContainer = document.createElement('div');
+        actionBtnContainer.classList.add('list-action-buttons');
+
+        const copyAiBtn = document.createElement('button');
+        copyAiBtn.id = `copyAiBtn-${list.id}`;
+        copyAiBtn.innerHTML = '<i class="fas fa-robot"></i> Copy AI'; // Example icon
+        copyAiBtn.title = 'Copy list content for AI prompt';
+        copyAiBtn.classList.add('action-btn'); 
+        // copyAiBtn.addEventListener('click', () => handleCopyAi(list.id)); // Add later
+        actionBtnContainer.appendChild(copyAiBtn);
+
+        const pasteListBtn = document.createElement('button');
+        pasteListBtn.id = `pasteListBtn-${list.id}`;
+        pasteListBtn.innerHTML = '<i class="fas fa-paste"></i> Paste'; // Example icon
+        pasteListBtn.title = 'Paste items into this list';
+        pasteListBtn.classList.add('action-btn');
+        // pasteListBtn.addEventListener('click', () => handlePasteIntoList(list.id)); // Add later
+        actionBtnContainer.appendChild(pasteListBtn);
+        
+        const startShoppingBtn = document.createElement('button');
+        startShoppingBtn.id = `startShoppingBtn-${list.id}`;
+        startShoppingBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Start'; // Example icon
+        startShoppingBtn.title = 'Start Shopping Mode (optimize view)';
+        startShoppingBtn.classList.add('action-btn', 'start-shopping-btn'); // Extra class for specific styling?
+        // startShoppingBtn.addEventListener('click', () => handleStartShopping(list.id)); // Add later
+        actionBtnContainer.appendChild(startShoppingBtn);
+
+        contentDiv.appendChild(actionBtnContainer); // Add section below heading
+
+        // Active Items Container 
+        const activeContainer = document.createElement('div');
+        activeContainer.className = 'list-container active-list-items'; 
+        activeContainer.id = `activeListContainer-${list.id}`;
+        contentDiv.appendChild(activeContainer);
+
+        // --- Create Single Item Add Section (MOVED) --- 
         const singleAddSection = document.createElement('div');
         singleAddSection.classList.add('input-area', 'add-single-item-section');
         singleAddSection.dataset.listId = list.id; 
-
+        // --- Start of moved block --- (Copied from original location)
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
-        nameInput.placeholder = 'Item Name';
+        nameInput.placeholder = 'Add item...'; // Changed placeholder slightly
         nameInput.required = true;
         nameInput.classList.add('single-item-name-input');
         nameInput.setAttribute('list', `itemSuggestions-${list.id}`); 
@@ -837,20 +873,19 @@ function renderListContentStructure(list) {
         const datalist = document.createElement('datalist');
         datalist.id = `itemSuggestions-${list.id}`;
         singleAddSection.appendChild(datalist);
-        // Populate the datalist immediately after creation
-        populateItemDatalist(datalist);
+        populateItemDatalist(datalist); // Keep population here
 
         const qtyInput = document.createElement('input');
         qtyInput.type = 'number';
         qtyInput.placeholder = 'Qty';
         qtyInput.min = '1';
-        qtyInput.style.maxWidth = '70px'; 
+        qtyInput.style.maxWidth = '60px'; // Adjusted width slightly
         qtyInput.classList.add('single-item-qty-input');
         singleAddSection.appendChild(qtyInput);
 
         const categorySelect = document.createElement('select');
         categorySelect.classList.add('single-item-category-select');
-        populateSingleItemCategorySelect(categorySelect); // Populate categories now
+        populateSingleItemCategorySelect(categorySelect); 
         singleAddSection.appendChild(categorySelect);
 
         const addButton = document.createElement('button');
@@ -861,30 +896,22 @@ function renderListContentStructure(list) {
             addSingleItem(list.id, nameInput, qtyInput, categorySelect);
         });
 
-        // Input listener for category prefill
-        nameInput.addEventListener('input', (e) => {
+        nameInput.addEventListener('input', (e) => { // Keep category prefill
             const enteredNameLower = e.target.value.toLowerCase();
             const knownData = knownItems[enteredNameLower]; 
             if (knownData !== undefined) { 
                 categorySelect.value = knownData.category === null ? '' : knownData.category;
             }
         });
-
-        // Add via Enter key
-        nameInput.addEventListener('keypress', (e) => {
+        nameInput.addEventListener('keypress', (e) => { // Keep add via Enter
              if (e.key === 'Enter') {
                  e.preventDefault();
                  addSingleItem(list.id, nameInput, qtyInput, categorySelect);
              }
          });
         singleAddSection.appendChild(addButton);
-        contentDiv.appendChild(singleAddSection); // Add section below heading
-
-        // Active Items Container (will be populated by renderItemsForList)
-        const activeContainer = document.createElement('div');
-        activeContainer.className = 'list-container active-list-items'; // Added class for clarity
-        activeContainer.id = `activeListContainer-${list.id}`;
-        contentDiv.appendChild(activeContainer);
+         // --- End of moved block ---
+        contentDiv.appendChild(singleAddSection); // Append AFTER active items container
 
         // Completed Items Section Structure
         const completedSection = document.createElement('div');
