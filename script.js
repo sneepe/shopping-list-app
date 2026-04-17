@@ -47,18 +47,51 @@ const NEW_LIST_SELECT_VALUE = '__new_list__';
 let shoppingTripListId = null;
 let lastShoppingUndo = null; // { listId, itemId, wasDoneBefore }
 
-const AI_FORMATTING_RULES_TEXT = `Paste & Shop — format for AI-generated lists
-
-Separate items with commas, semicolons, or newlines.
-
-Optional quantity: Item Name x3
-Optional category: Item Name cat:category_key
-Use category keys from your app (e.g. fruit, dairy, meat, household, default).
-
-Examples:
-Milk x2
-Bread cat:pantry
-Eggs x12 cat:dairy`;
+/** Clipboard text for AI assistants — rebuilt on copy so categories match currentCategoryConfig */
+function buildAiFormattingRulesText() {
+    const lines = [
+        'Paste & Shop — format for AI-generated lists',
+        '',
+        'Return the list inside a code block for easy copying.',
+        '',
+        'Separate items with commas, semicolons, or newlines.',
+        '',
+        'Optional quantity: Item Name x3',
+        'Optional category: Item Name cat:category_key',
+        '',
+    ];
+    if (!currentCategoryConfig || typeof currentCategoryConfig !== 'object') {
+        lines.push('Configure categories in the app, then copy again for an up-to-date key list.');
+        lines.push('');
+        lines.push('Examples:');
+        lines.push('Milk x2');
+        lines.push('Bread cat:bakery');
+        lines.push('Eggs x12 cat:dairy');
+        return lines.join('\n');
+    }
+    const sortedKeys = Object.keys(currentCategoryConfig).sort((a, b) => {
+        if (a === 'default') return 1;
+        if (b === 'default') return -1;
+        const nameA = currentCategoryConfig[a]?.name || '';
+        const nameB = currentCategoryConfig[b]?.name || '';
+        return nameA.localeCompare(nameB);
+    });
+    lines.push('Category keys in this app (same labels as "Available categories" on the page):');
+    sortedKeys.forEach((key) => {
+        const config = currentCategoryConfig[key];
+        if (!config?.name) return;
+        lines.push(`- ${key} (${config.name})`);
+    });
+    lines.push('');
+    const nonDefault = sortedKeys.filter((k) => k !== 'default');
+    const ex1 = nonDefault[0] || 'fruit';
+    const ex2 = nonDefault[1] || 'dairy';
+    lines.push('Examples:');
+    lines.push('Milk x2');
+    lines.push(`Bread cat:${ex1}`);
+    lines.push(`Eggs x12 cat:${ex2}`);
+    return lines.join('\n');
+}
 
 // ===========================================
 // === FUNCTION DEFINITIONS ==================
@@ -761,8 +794,8 @@ function handleCopyFormattingForAi() {
         alert('Clipboard skriving støttes ikke i denne nettleseren.');
         return;
     }
-    navigator.clipboard.writeText(AI_FORMATTING_RULES_TEXT.trim())
-        .then(() => showAppToast('Formattering kopiert til utklippstavlen'))
+    navigator.clipboard.writeText(buildAiFormattingRulesText().trim())
+        .then(() => showAppToast('Copied formatting rules to clipboard'))
         .catch(() => alert('Kunne ikke kopiere. Sjekk tillatelser.'));
 }
 
