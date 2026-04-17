@@ -1389,6 +1389,8 @@ function createItemCard(item, listId, isPoppingIn = false) {
 
     // Long press detection (ONLY for ACTIVE items triggers edit); disabled during shopping trip
     let pressTimer = null;
+    /** True once the long-press timer has opened the edit modal (still holding finger) */
+    let openedEditWhileHolding = false;
     const shoppingFocus = shoppingTripListId === listId;
 
     const startPress = (e) => {
@@ -1397,43 +1399,49 @@ function createItemCard(item, listId, isPoppingIn = false) {
         if (!item.done) {
             // console.log(`[startPress] Active item: ${item.name}, Type: ${e.type}`);
             longPressDetected = false; // Reset flag on new press start
+            openedEditWhileHolding = false;
             clearTimeout(pressTimer); // Clear any lingering timer
             pressTimer = setTimeout(() => {
                 longPressDetected = true; // Set flag when timer completes
                 // console.log(`[startPress] Long press timeout reached for: ${item.name}`);
                 if (navigator.vibrate) navigator.vibrate(50);
                 card.classList.add('long-press-active'); // Add visual feedback
-                // Edit is triggered in endPress based on the flag
+                openedEditWhileHolding = true;
+                suppressNextCardClick = true;
+                clearTimeout(suppressClearTimer);
+                suppressClearTimer = setTimeout(() => {
+                    suppressNextCardClick = false;
+                }, 600);
+                startItemEdit(listId, item.id);
             }, LONG_PRESS_DURATION);
         }
     };
 
     const endPress = (e) => {
         if (shoppingFocus) return;
-        // console.log(`[endPress] Fired for: ${item.name}, Detected flag: ${longPressDetected}, Type: ${e.type}`);
-        const wasLongPress = longPressDetected; // Capture state before clearing timer
-        clearTimeout(pressTimer); // Always clear timer
+        clearTimeout(pressTimer);
+        pressTimer = null;
         card.classList.remove('long-press-active'); // Remove feedback style
 
-        if (wasLongPress && !item.done) {
-            suppressNextCardClick = true;
+        if (openedEditWhileHolding) {
+            openedEditWhileHolding = false;
+            longPressDetected = false;
             e.stopPropagation();
             e.preventDefault();
-            startItemEdit(listId, item.id);
-            clearTimeout(suppressClearTimer);
-            suppressClearTimer = setTimeout(() => {
-                suppressNextCardClick = false;
-            }, 450);
+            return;
         }
+
         longPressDetected = false;
     };
 
     const cancelPress = () => {
          if (shoppingFocus) return;
-         // console.log(`[cancelPress] Fired for: ${item.name}`);
          clearTimeout(pressTimer);
+         pressTimer = null;
          card.classList.remove('long-press-active');
-         longPressDetected = false; // Reset flag on cancel
+         if (!openedEditWhileHolding) {
+             longPressDetected = false;
+         }
     };
 
     if (!shoppingFocus) {
