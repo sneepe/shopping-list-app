@@ -14,15 +14,37 @@ let listNameInput, createListBtn, targetListSelect, listInput, addItemsBtn,
 // --- Category Definitions --- 
 const DEFAULT_CATEGORIES = {
     fruit: { name: 'Fruit', color: '#5a994a' },
+    vegetables: { name: 'Vegetables', color: '#37b24d' },
     dairy: { name: 'Dairy', color: '#4a7db1' },
+    beverages: { name: 'Beverages', color: '#228be6' },
+    bakery: { name: 'Bakery', color: '#f08c00' },
     household: { name: 'Household', color: '#666666' },
     meat: { name: 'Meat', color: '#b15a4a' },
     snacks: { name: 'Snacks', color: '#b1a04a' },
     pantry: { name: 'Pantry', color: '#8a6d3b' },
     frozen: { name: 'Frozen', color: '#5bc0de' },
-    default: { name: 'Other', color: '#4a4a4a' } 
+    default: { name: 'Other', color: '#4a4a4a' },
 };
 let currentCategoryConfig = {}; // Will be loaded or initialized
+
+/** Adds new stock categories for users who saved config before those keys existed */
+function mergeMissingDefaultCategories() {
+    if (!currentCategoryConfig || typeof currentCategoryConfig !== 'object') return;
+    let changed = false;
+    for (const key of Object.keys(DEFAULT_CATEGORIES)) {
+        if (!(key in currentCategoryConfig)) {
+            currentCategoryConfig[key] = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES[key]));
+            changed = true;
+        }
+    }
+    if (changed) {
+        try {
+            localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(currentCategoryConfig));
+        } catch (e) {
+            console.warn('[mergeMissingDefaultCategories] Could not save:', e);
+        }
+    }
+}
 
 // --- Application State --- 
 let shoppingLists = {};
@@ -230,6 +252,8 @@ function loadState() {
              });
         });
         // console.log("[loadState] Validation complete.");
+
+        mergeMissingDefaultCategories();
 
         // --- Proceed to Rendering Sequence ---
         // console.log("[loadState] Calling continueLoadSequence().");
