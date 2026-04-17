@@ -1314,6 +1314,17 @@ function createItemCard(item, listId, isPoppingIn = false) {
     card.dataset.itemId = item.id;
     card.dataset.listId = listId; // Store listId for handlers
 
+    card.addEventListener(
+        'selectstart',
+        (e) => {
+            e.preventDefault();
+        },
+        false
+    );
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+
     // --- Apply Pop-in animation if needed ---
     if (isPoppingIn) {
         // console.log(`[createItemCard] Applying pop-in to item ${item.id}`);

@@ -4,6 +4,7 @@
   "description": "A simple shopping list application.",
   "start_url": "/shopping-list-app/index.html",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#090b10",
   "theme_color": "#090b10",
   "icons": [
