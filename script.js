@@ -1352,11 +1352,12 @@ function createItemCard(item, listId, isPoppingIn = false) {
 
     card.appendChild(cardContent);
 
-    if (item.quantity) {
+    const qtyNum = item.quantity != null ? Number(item.quantity) : null;
+    if (qtyNum != null && qtyNum > 1) {
         const qtyStripe = document.createElement('div');
         qtyStripe.classList.add('item-card-qty-stripe');
-        qtyStripe.textContent = String(item.quantity);
-        qtyStripe.setAttribute('aria-label', `Quantity ${item.quantity}`);
+        qtyStripe.textContent = String(qtyNum);
+        qtyStripe.setAttribute('aria-label', `Quantity ${qtyNum}`);
         card.appendChild(qtyStripe);
     }
 
@@ -2163,7 +2164,10 @@ function startItemEdit(listId, itemId, options = {}) {
 
     // Populate modal fields (Ensure modal elements are assigned in DOMContentLoaded)
     if (editNameInput) editNameInput.value = item.name;
-    if (editQtyInput) editQtyInput.value = item.quantity || '';
+    if (editQtyInput) {
+        const q = item.quantity;
+        editQtyInput.value = String(q == null || q < 1 ? 1 : q);
+    }
     if (editCategorySelect) {
         populateSingleItemCategorySelect(editCategorySelect); // Ensure options are up-to-date
         editCategorySelect.value = item.category || '';
@@ -2213,19 +2217,15 @@ function handleSaveItemEdit(/* Reads from modal/global state */) {
 
     // --- Get values from MODAL --- 
     const newName = editNameInput.value.trim();
-    const qtyValue = editQtyInput.value.trim();
-    const newQuantity = qtyValue ? parseInt(qtyValue, 10) : null; 
+    let qtyParsed = parseInt(editQtyInput.value.trim(), 10);
+    if (Number.isNaN(qtyParsed) || qtyParsed < 1) qtyParsed = 1;
+    const newQuantity = qtyParsed === 1 ? null : qtyParsed;
     const newCategory = editCategorySelect.value || null; 
 
     // --- Validate --- 
     if (!newName) {
         alert("Item name cannot be empty.");
         editNameInput.focus();
-        return; // Keep modal open
-    }
-    if (newQuantity !== null && (isNaN(newQuantity) || newQuantity < 1)) {
-        alert("Quantity must be a positive number or empty.");
-        editQtyInput.focus();
         return; // Keep modal open
     }
 
@@ -2265,15 +2265,14 @@ function hideEditModal() {
      currentlyEditing = null; // Clear reference
 }
 
-/** Step quantity in edit modal: empty field = no quantity; minus from 1 clears */
+/** Step quantity in edit modal: minimum 1 (single items stored as null on save) */
 function adjustEditItemQuantity(delta) {
     const input = document.getElementById('editQtyInput');
     if (!input) return;
-    const raw = input.value.trim();
-    const parsed = raw === '' ? 0 : parseInt(raw, 10);
-    const current = Number.isNaN(parsed) ? 0 : parsed;
-    const next = current + delta;
-    input.value = next < 1 ? '' : String(next);
+    const parsed = parseInt(input.value.trim(), 10);
+    let current = Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    const next = Math.max(1, current + delta);
+    input.value = String(next);
 }
 
 // --- Helper function to create tabs --- 
