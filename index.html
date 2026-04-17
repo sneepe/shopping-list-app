@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <meta name="theme-color" content="#333333">
+    <meta name="theme-color" content="#090b10">
 </head>
 <body>
     <div class="container">
@@ -42,14 +42,22 @@
                     <option value="" disabled selected>Select list to add items to...</option>
                     <!-- List options will be added by JS -->
                  </select>
+                 <div id="newListFromDropdownWrap" class="new-list-from-dropdown hidden">
+                    <input type="text" id="newListFromDropdownInput" placeholder="Name for new list…" autocomplete="off" maxlength="120">
+                    <button type="button" id="newListFromDropdownBtn" class="btn-outline">Create list</button>
+                    <p id="newListDraftHint" class="new-list-draft-hint">Items below are added to the list chosen in the dropdown above — not to this new list until you click Create list.</p>
+                 </div>
                  <input type="text" id="firstListNameInput" class="hidden" placeholder="Enter name for first list...">
-                 <textarea id="listInput" placeholder="Enter items separated by comma, semicolon, or newline..." rows="4" list="itemSuggestions"></textarea>
+                 <textarea id="listInput" placeholder="Enter items separated by comma, semicolon, or newline..." rows="4" list="itemSuggestions" autocomplete="off"></textarea>
                 <datalist id="itemSuggestions">
                     <!-- Options will be added here by JavaScript -->
                 </datalist>
-                <div class="button-group">
-                    <button id="pasteBtn" class="paste-btn mobile-only-btn" title="Paste from Clipboard"><i class="fas fa-paste">Paste</i></button> 
-                    <button id="addItemsBtn" disabled>Add to Selected List</button> 
+                <div class="button-group clipboard-actions">
+                    <button type="button" id="copyFormatAiBtn" class="btn-outline" title="Copy formatting rules for AI assistants">Copy formatting for AI</button>
+                    <button type="button" id="pasteFromAiBtn" class="btn-outline" title="Paste text from clipboard into the field above"><i class="fas fa-paste"></i> Paste from AI</button>
+                </div>
+                <div class="button-group submit-actions">
+                    <button id="addItemsBtn" disabled>Add to Selected List</button>
                 </div>
             </div>
 

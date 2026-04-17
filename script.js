@@ -9,7 +9,7 @@ let listNameInput, createListBtn, targetListSelect, listInput, addItemsBtn,
     categoryListElement, tabContainer, listContentContainer, manageListsTabButton, 
     categorySettingsContainer, addNewCategoryBtn, saveSettingsBtn, dynamicStyleSheet, 
     toggleSettingsBtn, settingsAreaWrapper, hamburgerBtn, mobileNavPanel, 
-    mobileManageListsTabButton, pasteBtn;
+    mobileManageListsTabButton, pasteFromAiBtn, copyFormatAiBtn;
 
 // --- Category Definitions --- 
 const DEFAULT_CATEGORIES = {
@@ -39,6 +39,26 @@ let knownItems = {};
 let pressTimer = null;
 let longPressDetected = false;
 const LONG_PRESS_DURATION = 700; // milliseconds
+
+/** Dropdown sentinel: create list from Manage Items page */
+const NEW_LIST_SELECT_VALUE = '__new_list__';
+
+/** One list at a time: hide nav, tap-only cards, Undo / Finish */
+let shoppingTripListId = null;
+let lastShoppingUndo = null; // { listId, itemId, wasDoneBefore }
+
+const AI_FORMATTING_RULES_TEXT = `Paste & Shop — format for AI-generated lists
+
+Separate items with commas, semicolons, or newlines.
+
+Optional quantity: Item Name x3
+Optional category: Item Name cat:category_key
+Use category keys from your app (e.g. fruit, dairy, meat, household, default).
+
+Examples:
+Milk x2
+Bread cat:pantry
+Eggs x12 cat:dairy`;
 
 // ===========================================
 // === FUNCTION DEFINITIONS ==================
@@ -277,6 +297,8 @@ function updateTargetListDropdown() {
         firstListNameInput.oninput = () => {
             if (addItemsBtn) addItemsBtn.disabled = firstListNameInput.value.trim() === '';
         };
+        const newListWrapNoLists = document.getElementById('newListFromDropdownWrap');
+        if (newListWrapNoLists) newListWrapNoLists.classList.add('hidden');
 
     } else {
         // LISTS EXIST: Show dropdown, hide input field
@@ -300,18 +322,81 @@ function updateTargetListDropdown() {
             option.textContent = list.name;
             targetListSelect.appendChild(option);
         });
+
+        const newListOpt = document.createElement('option');
+        newListOpt.value = NEW_LIST_SELECT_VALUE;
+        newListOpt.textContent = '+ New list…';
+        targetListSelect.appendChild(newListOpt);
         
-        // Restore previous selection or select first list
-        if (shoppingLists[currentSelection]) {
+        // Restore previous selection or select first list (never leave sentinel selected)
+        if (currentSelection === NEW_LIST_SELECT_VALUE) {
+            if (firstListId) targetListSelect.value = firstListId;
+        } else if (shoppingLists[currentSelection]) {
             targetListSelect.value = currentSelection;
         } else if (firstListId) {
              targetListSelect.value = firstListId;
         }
         
-        // Enable/disable Add button based on dropdown selection
-         if (addItemsBtn) addItemsBtn.disabled = !targetListSelect.value;
+        const newListWrap = document.getElementById('newListFromDropdownWrap');
+        if (newListWrap) newListWrap.classList.add('hidden');
+        updateAddItemsButtonForTargetListUI();
     }
     // console.log('[updateTargetListDropdown] Finished.');
+}
+
+function isNewListDraftOpen() {
+    const wrap = document.getElementById('newListFromDropdownWrap');
+    return !!(wrap && !wrap.classList.contains('hidden'));
+}
+
+/** Disable Add while the “name your new list” row is open so items aren’t added to the old dropdown selection by mistake */
+function updateAddItemsButtonForTargetListUI() {
+    if (!addItemsBtn || !targetListSelect) return;
+    if (isNewListDraftOpen()) {
+        addItemsBtn.disabled = true;
+        addItemsBtn.title = 'Create the new list first, or choose another list in the dropdown.';
+        return;
+    }
+    addItemsBtn.title = '';
+    addItemsBtn.disabled = !targetListSelect.value || targetListSelect.value === NEW_LIST_SELECT_VALUE;
+}
+
+function handleTargetListSelectChange() {
+    if (!targetListSelect) return;
+    if (targetListSelect.value === NEW_LIST_SELECT_VALUE) {
+        const sortedLists = Object.values(shoppingLists).sort((a, b) => {
+            const orderDiff = (a.order || 0) - (b.order || 0);
+            return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name);
+        });
+        if (sortedLists.length) targetListSelect.value = sortedLists[0].id;
+        const wrap = document.getElementById('newListFromDropdownWrap');
+        const inp = document.getElementById('newListFromDropdownInput');
+        if (wrap && inp) {
+            wrap.classList.remove('hidden');
+            inp.value = '';
+            inp.focus();
+        }
+    } else {
+        const wrap = document.getElementById('newListFromDropdownWrap');
+        if (wrap) wrap.classList.add('hidden');
+    }
+    updateAddItemsButtonForTargetListUI();
+}
+
+function submitNewListFromDropdown() {
+    const inp = document.getElementById('newListFromDropdownInput');
+    const wrap = document.getElementById('newListFromDropdownWrap');
+    const name = inp ? inp.value.trim() : '';
+    if (!name) {
+        alert('Please enter a name for the new list.');
+        if (inp) inp.focus();
+        return;
+    }
+    const newId = createNewList(name, { stayOnManageTab: true });
+    if (newId && wrap && inp) {
+        wrap.classList.add('hidden');
+        inp.value = '';
+    }
 }
 
 // --- Dynamic Stylesheet --- 
@@ -654,8 +739,130 @@ function handleDocumentClick(e) {
     }
 }
 
+function showAppToast(message) {
+    let t = document.getElementById('appToast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'appToast';
+        t.className = 'app-toast';
+        t.setAttribute('role', 'status');
+        document.body.appendChild(t);
+    }
+    t.textContent = message;
+    t.classList.add('visible');
+    clearTimeout(showAppToast._tid);
+    showAppToast._tid = setTimeout(() => t.classList.remove('visible'), 2200);
+}
+
+function handleCopyFormattingForAi() {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        alert('Clipboard skriving støttes ikke i denne nettleseren.');
+        return;
+    }
+    navigator.clipboard.writeText(AI_FORMATTING_RULES_TEXT.trim())
+        .then(() => showAppToast('Formattering kopiert til utklippstavlen'))
+        .catch(() => alert('Kunne ikke kopiere. Sjekk tillatelser.'));
+}
+
+function ensureShoppingBanner() {
+    let banner = document.getElementById('shoppingTripBanner');
+    if (banner) return banner;
+    banner = document.createElement('div');
+    banner.id = 'shoppingTripBanner';
+    banner.className = 'shopping-trip-banner';
+    banner.hidden = true;
+    banner.innerHTML = `
+        <div class="shopping-trip-inner">
+            <span class="shopping-trip-title" id="shoppingTripTitle">Shopping</span>
+            <span class="shopping-trip-remaining" id="shoppingTripRemaining" aria-live="polite"></span>
+            <div class="shopping-trip-actions">
+                <button type="button" id="shoppingUndoBtn" class="shopping-banner-btn">Undo</button>
+                <button type="button" id="shoppingFinishBtn" class="shopping-banner-btn primary">Finish</button>
+            </div>
+        </div>`;
+    const container = document.querySelector('.container');
+    if (container) container.insertBefore(banner, container.firstChild);
+    else document.body.insertBefore(banner, document.body.firstChild);
+
+    document.getElementById('shoppingUndoBtn').addEventListener('click', undoLastShoppingToggle);
+    document.getElementById('shoppingFinishBtn').addEventListener('click', exitShoppingTrip);
+    return banner;
+}
+
+function updateShoppingBanner(listId) {
+    const banner = ensureShoppingBanner();
+    const list = shoppingLists[listId];
+    const titleEl = document.getElementById('shoppingTripTitle');
+    const remEl = document.getElementById('shoppingTripRemaining');
+    if (titleEl && list) titleEl.textContent = 'Shopping: ' + list.name;
+    const remaining = list ? list.items.filter(i => !i.done).length : 0;
+    if (remEl) remEl.textContent = remaining + (remaining === 1 ? ' item left' : ' items left');
+    banner.hidden = false;
+}
+
+function exitShoppingTrip() {
+    const lid = shoppingTripListId;
+    shoppingTripListId = null;
+    lastShoppingUndo = null;
+    document.body.classList.remove('shopping-trip-active');
+    delete document.body.dataset.shoppingListId;
+    document.querySelectorAll('.list-shopping-focus').forEach(el => el.classList.remove('list-shopping-focus'));
+    const banner = document.getElementById('shoppingTripBanner');
+    if (banner) banner.hidden = true;
+    if (lid && shoppingLists[lid]) activeListId = lid;
+    renderTabsAndContent();
+}
+
+function enterShoppingTrip(listId) {
+    if (!shoppingLists[listId]) return;
+    shoppingTripListId = listId;
+    lastShoppingUndo = null;
+    activeListId = listId;
+    document.body.classList.add('shopping-trip-active');
+    document.body.dataset.shoppingListId = listId;
+    document.querySelectorAll('.list-shopping-focus').forEach(el => el.classList.remove('list-shopping-focus'));
+    const pane = document.getElementById(`list-tab-content-${listId}`);
+    if (pane) pane.classList.add('list-shopping-focus');
+    ensureShoppingBanner();
+    updateShoppingBanner(listId);
+    syncAllStartFinishButtons();
+    renderItemsForList(listId);
+    switchTab(`list-${listId}`);
+}
+
+function syncAllStartFinishButtons() {
+    document.querySelectorAll('[id^="startShoppingBtn-"]').forEach(btn => {
+        const id = btn.id.replace('startShoppingBtn-', '');
+        const isThisTrip = shoppingTripListId === id;
+        btn.innerHTML = isThisTrip
+            ? '<i class="fas fa-flag-checkered"></i> Finish'
+            : '<i class="fas fa-shopping-cart"></i> Start';
+        btn.title = isThisTrip ? 'Avslutt handletur og lås opp faner' : 'Start handletur (kun denne listen, ingen bytte av fane)';
+        btn.classList.toggle('finish-shopping-btn', isThisTrip);
+    });
+}
+
+function undoLastShoppingToggle() {
+    if (!lastShoppingUndo || !shoppingTripListId) return;
+    const { listId, itemId, wasDoneBefore } = lastShoppingUndo;
+    const list = shoppingLists[listId];
+    if (!list) return;
+    const item = list.items.find(i => i.id === itemId);
+    if (item) {
+        item.done = wasDoneBefore;
+        saveState();
+        renderItemsForList(listId, itemId);
+    }
+    lastShoppingUndo = null;
+    updateShoppingBanner(listId);
+}
+
 // --- Tab Management --- 
 function switchTab(targetTabId) {
+    if (shoppingTripListId) {
+        const allowed = targetTabId === `list-${shoppingTripListId}`;
+        if (!allowed) return;
+    }
     // console.log(`[switchTab] Switching to tab: ${targetTabId}`); 
     // Deactivate all tabs and content
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
@@ -767,21 +974,26 @@ function renderTabsAndContent() {
 
     // Determine which tab should be active after re-render
     let targetTabIdToActivate;
-    if (inputTabWasActive) {
+    if (shoppingTripListId && shoppingLists[shoppingTripListId]) {
+        targetTabIdToActivate = `list-${shoppingTripListId}`;
+    } else if (inputTabWasActive) {
         targetTabIdToActivate = 'inputTab';
     } else if (previouslyActiveListId && shoppingLists[previouslyActiveListId]) {
-        // If the previously active list still exists, keep it active
         targetTabIdToActivate = `list-${previouslyActiveListId}`;
     } else if (sortedLists.length > 0) {
-        // Otherwise, if there are lists, activate the first one
         targetTabIdToActivate = `list-${sortedLists[0].id}`;
     } else {
-        // If no lists exist, activate the input tab
         targetTabIdToActivate = 'inputTab';
     }
     
     // console.log(`[renderTabsAndContent] Determined target tab to activate: ${targetTabIdToActivate}`); 
-    switchTab(targetTabIdToActivate); 
+    switchTab(targetTabIdToActivate);
+    syncAllStartFinishButtons();
+    if (shoppingTripListId && shoppingLists[shoppingTripListId]) {
+        const pane = document.getElementById(`list-tab-content-${shoppingTripListId}`);
+        if (pane) pane.classList.add('list-shopping-focus');
+        updateShoppingBanner(shoppingTripListId);
+    } 
     // console.log("[renderTabsAndContent] Finished full UI render."); 
 }
 
@@ -815,41 +1027,33 @@ function renderListContentStructure(list) {
         contentDiv = document.createElement('div');
         contentDiv.id = `list-tab-content-${list.id}`;
         contentDiv.classList.add('tab-content', 'list-tab'); // Initially hidden by default CSS
+        contentDiv.dataset.listPaneId = list.id;
         
         // Add List Name Heading
         const heading = document.createElement('h2');
         heading.textContent = list.name;
+        heading.classList.add('list-pane-title');
         contentDiv.appendChild(heading);
 
-        // --- Create NEW Action Buttons Section ---
         const actionBtnContainer = document.createElement('div');
         actionBtnContainer.classList.add('list-action-buttons');
 
-        const copyAiBtn = document.createElement('button');
-        copyAiBtn.id = `copyAiBtn-${list.id}`;
-        copyAiBtn.innerHTML = '<i class="fas fa-robot"></i> Copy AI'; // Example icon
-        copyAiBtn.title = 'Copy list content for AI prompt';
-        copyAiBtn.classList.add('action-btn'); 
-        // copyAiBtn.addEventListener('click', () => handleCopyAi(list.id)); // Add later
-        actionBtnContainer.appendChild(copyAiBtn);
-
-        const pasteListBtn = document.createElement('button');
-        pasteListBtn.id = `pasteListBtn-${list.id}`;
-        pasteListBtn.innerHTML = '<i class="fas fa-paste"></i> Paste'; // Example icon
-        pasteListBtn.title = 'Paste items into this list';
-        pasteListBtn.classList.add('action-btn');
-        // pasteListBtn.addEventListener('click', () => handlePasteIntoList(list.id)); // Add later
-        actionBtnContainer.appendChild(pasteListBtn);
-        
         const startShoppingBtn = document.createElement('button');
+        startShoppingBtn.type = 'button';
         startShoppingBtn.id = `startShoppingBtn-${list.id}`;
-        startShoppingBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Start'; // Example icon
-        startShoppingBtn.title = 'Start Shopping Mode (optimize view)';
-        startShoppingBtn.classList.add('action-btn', 'start-shopping-btn'); // Extra class for specific styling?
-        // startShoppingBtn.addEventListener('click', () => handleStartShopping(list.id)); // Add later
+        startShoppingBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Start';
+        startShoppingBtn.title = 'Start handletur (låser faner til du trykker Finish)';
+        startShoppingBtn.classList.add('action-btn', 'start-shopping-btn');
+        startShoppingBtn.addEventListener('click', () => {
+            if (shoppingTripListId === list.id) {
+                exitShoppingTrip();
+            } else if (!shoppingTripListId) {
+                enterShoppingTrip(list.id);
+            }
+        });
         actionBtnContainer.appendChild(startShoppingBtn);
 
-        contentDiv.appendChild(actionBtnContainer); // Add section below heading
+        contentDiv.appendChild(actionBtnContainer);
 
         // Active Items Container 
         const activeContainer = document.createElement('div');
@@ -859,7 +1063,7 @@ function renderListContentStructure(list) {
 
         // --- Create Single Item Add Section (MOVED) --- 
         const singleAddSection = document.createElement('div');
-        singleAddSection.classList.add('input-area', 'add-single-item-section');
+        singleAddSection.classList.add('input-area', 'add-single-item-section', 'list-edit-only');
         singleAddSection.dataset.listId = list.id; 
         // --- Start of moved block --- (Copied from original location)
         const nameInput = document.createElement('input');
@@ -915,7 +1119,7 @@ function renderListContentStructure(list) {
 
         // Completed Items Section Structure
         const completedSection = document.createElement('div');
-        completedSection.classList.add('list-section', 'completed-list');
+        completedSection.classList.add('list-section', 'completed-list', 'list-edit-only');
          const completedHeading = document.createElement('h3'); 
         completedHeading.textContent = 'Completed Items';
         completedSection.appendChild(completedHeading);
@@ -940,7 +1144,8 @@ function renderListContentStructure(list) {
         
         // Delete List Button
         const deleteBtn = document.createElement('button');
-        deleteBtn.classList.add('delete-list-btn');
+        deleteBtn.type = 'button';
+        deleteBtn.classList.add('delete-list-btn', 'list-edit-only');
         deleteBtn.dataset.listId = list.id;
         deleteBtn.textContent = 'Delete List';
         deleteBtn.addEventListener('click', (e) => {
@@ -975,7 +1180,15 @@ function renderItemsForList(listId, poppedItemId = null) {
 
     const activeItems = list.items.filter(item => !item.done);
     const completedItems = list.items.filter(item => item.done);
-    // console.log(`[renderItemsForList] List ${listId}: ${activeItems.length} active, ${completedItems.length} completed.`);
+    const shoppingThisList = shoppingTripListId === listId;
+
+    const completedSection = completedContainer.closest('.completed-list');
+    if (shoppingThisList) {
+        if (completedSection) completedSection.style.display = 'none';
+        completedContainer.innerHTML = '';
+    } else if (completedSection) {
+        completedSection.style.display = '';
+    }
 
     const groupedActiveItems = activeItems.reduce((acc, item) => {
          const categoryKey = item.category || 'default'; 
@@ -1016,20 +1229,18 @@ function renderItemsForList(listId, poppedItemId = null) {
     });
     
     // Render completed items and handle section visibility
-    const completedSection = completedContainer.closest('.completed-list'); 
     const clearCompletedBtn = completedSection ? completedSection.querySelector('.clear-completed-btn') : null;
 
-    if (completedItems.length > 0) {
+    if (!shoppingThisList && completedItems.length > 0) {
         if (completedSection) completedSection.style.display = '';
-        if (clearCompletedBtn) clearCompletedBtn.style.display = ''; // Show button
+        if (clearCompletedBtn) clearCompletedBtn.style.display = '';
         completedItems.forEach(item => {
-            // Pass poppedItemId to createItemCard
             const card = createItemCard(item, listId, poppedItemId === item.id); 
             completedContainer.appendChild(card);
         });
-    } else {
+    } else if (!shoppingThisList) {
         if (completedSection) completedSection.style.display = 'none'; 
-        if (clearCompletedBtn) clearCompletedBtn.style.display = 'none'; // Hide button
+        if (clearCompletedBtn) clearCompletedBtn.style.display = 'none';
     }
     // console.log(`[renderItemsForList] Finished rendering items for list: ${listId}`);
 }
@@ -1088,27 +1299,29 @@ function createItemCard(item, listId, isPoppingIn = false) {
     // card.appendChild(cardControls);
 
     // --- Event Listeners for Interaction ---
-    // Need to reset longPressDetected for each card instance scope
+    // longPressDetected is cleared before the synthetic click fires — use suppressNextCardClick instead.
     let longPressDetected = false;
+    let suppressNextCardClick = false;
+    let suppressClearTimer = null;
 
-    // Click to toggle done status
-    card.addEventListener('click', () => {
-        // Only toggle if not in edit mode (add check later if needed)
-        // and if long press didn't happen for this specific interaction
+    card.addEventListener('click', (ev) => {
+        if (suppressNextCardClick) {
+            suppressNextCardClick = false;
+            ev.preventDefault();
+            ev.stopPropagation();
+            return;
+        }
         if (!card.classList.contains('editing') && !longPressDetected) {
-            // console.log(`[Click] Toggling item: ${item.name}, longPressDetected: ${longPressDetected}`);
             toggleItemDone(listId, item.id);
-        } else {
-             // console.log(`[Click] Prevented toggle for: ${item.name}, longPressDetected: ${longPressDetected}`);
-             // Reset flag after a prevented click due to long press?
-             // longPressDetected = false; // Resetting in endPress/touchcancel/mouseleave seems sufficient
         }
     });
 
-    // Long press detection (ONLY for ACTIVE items triggers edit)
+    // Long press detection (ONLY for ACTIVE items triggers edit); disabled during shopping trip
     let pressTimer = null;
+    const shoppingFocus = shoppingTripListId === listId;
 
     const startPress = (e) => {
+        if (shoppingFocus) return;
         // Only start timer for ACTIVE items
         if (!item.done) {
             // console.log(`[startPress] Active item: ${item.name}, Type: ${e.type}`);
@@ -1125,36 +1338,41 @@ function createItemCard(item, listId, isPoppingIn = false) {
     };
 
     const endPress = (e) => {
+        if (shoppingFocus) return;
         // console.log(`[endPress] Fired for: ${item.name}, Detected flag: ${longPressDetected}, Type: ${e.type}`);
         const wasLongPress = longPressDetected; // Capture state before clearing timer
         clearTimeout(pressTimer); // Always clear timer
         card.classList.remove('long-press-active'); // Remove feedback style
 
         if (wasLongPress && !item.done) {
-             // console.log(`[endPress] Long press confirmed for: ${item.name}. Preventing default click.`);
-             // Prevent the default click action (toggleItemDone)
-             e.stopPropagation();
-             e.preventDefault();
-             startItemEdit(listId, item.id); // Trigger edit for active item long press
+            suppressNextCardClick = true;
+            e.stopPropagation();
+            e.preventDefault();
+            startItemEdit(listId, item.id);
+            clearTimeout(suppressClearTimer);
+            suppressClearTimer = setTimeout(() => {
+                suppressNextCardClick = false;
+            }, 450);
         }
-        // Reset flag AFTER processing the end event
         longPressDetected = false;
     };
 
     const cancelPress = () => {
+         if (shoppingFocus) return;
          // console.log(`[cancelPress] Fired for: ${item.name}`);
          clearTimeout(pressTimer);
          card.classList.remove('long-press-active');
          longPressDetected = false; // Reset flag on cancel
     };
 
-    // Add listeners for mouse and touch events
-    card.addEventListener('mousedown', startPress);
-    card.addEventListener('touchstart', startPress, { passive: true }); // Passive might be okay if not preventing scroll explicitly
-    card.addEventListener('mouseup', endPress);
-    card.addEventListener('mouseleave', cancelPress); // Use cancelPress for clarity
-    card.addEventListener('touchend', endPress);
-    card.addEventListener('touchcancel', cancelPress); // Use cancelPress for clarity
+    if (!shoppingFocus) {
+        card.addEventListener('mousedown', startPress);
+        card.addEventListener('touchstart', startPress, { passive: true });
+        card.addEventListener('mouseup', endPress);
+        card.addEventListener('mouseleave', cancelPress);
+        card.addEventListener('touchend', endPress);
+        card.addEventListener('touchcancel', cancelPress);
+    }
 
     return card;
 } // End of createItemCard
@@ -1183,7 +1401,12 @@ function toggleItemDone(listId, itemId) {
     setTimeout(() => {
         // console.log(`[toggleItemDone] Shrink timeout reached for ${itemId}. Updating state and re-rendering.`);
         const wasDone = item.done; 
-        item.done = !item.done; 
+        item.done = !item.done;
+
+        if (shoppingTripListId === listId) {
+            lastShoppingUndo = { listId, itemId, wasDoneBefore: wasDone };
+            updateShoppingBanner(listId);
+        }
         
         // If item was moved from completed back to active, increment its count
         if (wasDone && !item.done) {
@@ -1229,10 +1452,14 @@ function addItemsToList() {
     } else {
         // --- Scenario: Add to Existing List --- 
         if (!targetListSelect) { console.error("addItemsToList: targetListSelect missing."); return; } // KEEP Error
+        if (isNewListDraftOpen()) {
+            alert('Finish creating your new list first (click Create list), or choose another list in the dropdown.');
+            return;
+        }
         targetListId = targetListSelect.value;
-        if (!targetListId) { 
-            alert("Please select a list from the dropdown first!"); 
-            return; 
+        if (!targetListId || targetListId === NEW_LIST_SELECT_VALUE) {
+            alert('Choose a list in the dropdown (or finish creating a new list there).');
+            return;
         }
         // console.log(`[addItemsToList] Adding items to existing list ID: ${targetListId}`);
     }
@@ -1372,8 +1599,9 @@ function handleToggleSettingsClick() {
 }
 
 // --- List Creation / Deletion --- 
-// Modified to accept name as argument and return success/failure
-function createNewList(listName) {
+// options.stayOnManageTab — stay on "Manage Items" instead of switching to the new list tab (+ button / dropdown)
+function createNewList(listName, options = {}) {
+    const stayOnManageTab = !!options.stayOnManageTab;
      // console.log(`[createNewList] Attempting to create list: "${listName}"`);
     listName = listName.trim(); // Ensure trimmed
     if (!listName) {
@@ -1402,11 +1630,13 @@ function createNewList(listName) {
     saveState();
     // listNameInput.value = ''; // No longer needed as input is handled elsewhere
     
-    // Switch to the newly created list tab
-    switchTab(`list-${newListId}`);
+    if (stayOnManageTab) {
+        switchTab('inputTab');
+    } else {
+        switchTab(`list-${newListId}`);
+    }
 
-    // Return the ID of the newly created list
-    return newListId; 
+    return newListId;
 }
 
 function deleteList(listIdToDelete) {
@@ -1415,6 +1645,15 @@ function deleteList(listIdToDelete) {
     const listName = shoppingLists[listIdToDelete].name;
     if (confirm(`Are you sure you want to delete the list "${listName}"? This cannot be undone.`)) {
         // console.log(`[deleteList] Deleting list: ${listName} (${listIdToDelete})`);
+        if (shoppingTripListId === listIdToDelete) {
+            shoppingTripListId = null;
+            lastShoppingUndo = null;
+            document.body.classList.remove('shopping-trip-active');
+            delete document.body.dataset.shoppingListId;
+            const banner = document.getElementById('shoppingTripBanner');
+            if (banner) banner.hidden = true;
+            document.querySelectorAll('.list-shopping-focus').forEach(el => el.classList.remove('list-shopping-focus'));
+        }
         const wasActive = activeListId === listIdToDelete;
         delete shoppingLists[listIdToDelete]; // Remove from data
         
@@ -1768,7 +2007,7 @@ function showCreateListInput(buttonElement) {
 function handleCreateListFromTempInput(listName, inputContainer, originalButton) {
      // console.log(`[handleCreateListFromTempInput] Attempting to create list: "${listName}"`);
     
-     const success = createNewList(listName);
+     const success = createNewList(listName, { stayOnManageTab: true });
 
      if (success) {
          // console.log("[handleCreateListFromTempInput] List created successfully. Cleaning up input.");
@@ -1907,7 +2146,9 @@ function createTabElement(text, tabId, isActive, isMobile = false) {
     const button = document.createElement('button');
     button.textContent = text;
     button.dataset.tab = tabId;
+    button.type = 'button';
     button.className = isMobile ? 'tab-button mobile-tab-button' : 'tab-button';
+    if (tabId.startsWith('list-')) button.classList.add('list-tab-button');
     if (isActive) button.classList.add('active');
     button.addEventListener('click', () => switchTab(tabId));
     return button;
@@ -1952,7 +2193,8 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileNavPanel = document.getElementById('mobileNavPanel');
     // Find the mobile 'Manage Lists' button inside the mobile panel
     mobileManageListsTabButton = mobileNavPanel ? mobileNavPanel.querySelector('[data-tab="inputTab"]') : null; 
-    pasteBtn = document.getElementById('pasteBtn');
+    pasteFromAiBtn = document.getElementById('pasteFromAiBtn');
+    copyFormatAiBtn = document.getElementById('copyFormatAiBtn');
     // Add list buttons
     const addListTabBtn = document.getElementById('addListTabBtn');
     const addListMobileBtn = document.getElementById('addListMobileBtn');
@@ -1967,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Check if essential elements were found ---
     let essentialElementsFound = true;
     // REMOVED listNameInput and createListBtn from essential check
-    const essentialIDs = ['targetListSelect', 'listInput', 'addItemsBtn', 'categoryList', 'tabContainer', 'listContentContainer', 'categorySettingsContainer', 'addNewCategoryBtn', 'saveSettingsBtn', 'toggleSettingsBtn', 'settingsAreaWrapper', 'hamburgerBtn', 'mobileNavPanel', 'pasteBtn'];
+    const essentialIDs = ['targetListSelect', 'listInput', 'addItemsBtn', 'categoryList', 'tabContainer', 'listContentContainer', 'categorySettingsContainer', 'addNewCategoryBtn', 'saveSettingsBtn', 'toggleSettingsBtn', 'settingsAreaWrapper', 'hamburgerBtn', 'mobileNavPanel', 'pasteFromAiBtn', 'copyFormatAiBtn'];
     essentialIDs.forEach(id => {
         if (!document.getElementById(id)) {
             console.error(`[DOMContentLoaded] CRITICAL: Essential DOM element with ID '${id}' not found!`); // KEEP Error
@@ -2002,7 +2244,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Item Adding (Bulk)
     if (addItemsBtn) addItemsBtn.addEventListener('click', addItemsToList);
     if (listInput) listInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addItemsToList(); } });
-    if (pasteBtn) pasteBtn.addEventListener('click', handlePasteClick);
+    if (pasteFromAiBtn) pasteFromAiBtn.addEventListener('click', handlePasteClick);
+    if (copyFormatAiBtn) copyFormatAiBtn.addEventListener('click', handleCopyFormattingForAi);
+    if (targetListSelect) targetListSelect.addEventListener('change', handleTargetListSelectChange);
+    const newListFromDropdownBtnEl = document.getElementById('newListFromDropdownBtn');
+    const newListFromDropdownInputEl = document.getElementById('newListFromDropdownInput');
+    if (newListFromDropdownBtnEl) newListFromDropdownBtnEl.addEventListener('click', submitNewListFromDropdown);
+    if (newListFromDropdownInputEl) {
+        newListFromDropdownInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitNewListFromDropdown();
+            }
+        });
+    }
 
     // Tab Switching (Static Tabs)
     if (manageListsTabButton) manageListsTabButton.addEventListener('click', () => switchTab('inputTab'));
