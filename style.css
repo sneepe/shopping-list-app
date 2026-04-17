@@ -599,15 +599,15 @@ h2 {
 /* Item Card Styling */
 .item-card {
     background-color: var(--category-color);
-    padding: 12px;
+    padding: 0;
     border-radius: var(--radius-md);
     position: relative;
     text-align: center;
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    justify-content: stretch;
+    align-items: stretch;
     aspect-ratio: 1 / 1;
     color: #f8fafc;
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -724,21 +724,50 @@ h2 {
 }
 
 .item-card.done {
-    /* Keep original category color but make it darker */
-    /* background-color: #6c757d; /* Old grey background */
     filter: brightness(0.6) grayscale(0.2);
+    color: #adb5bd;
+}
+
+.item-card.done .item-name {
     text-decoration: line-through;
-    color: #adb5bd; /* Lighter text for contrast on dark background */
+}
+
+.item-card.done .item-card-qty-stripe {
+    opacity: 0.75;
 }
 
 .item-card.done:hover {
-     /* Slightly less dark on hover */
     filter: brightness(0.7) grayscale(0.1);
+}
+
+.item-card-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 12px 10px 10px;
+}
+
+.item-card-qty-stripe {
+    flex-shrink: 0;
+    width: 100%;
+    padding: 7px 8px;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: rgba(248, 250, 252, 0.92);
+    background: rgba(15, 23, 42, 0.42);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-sizing: border-box;
+    line-height: 1.2;
 }
 
 .item-name {
     font-weight: 500;
-    margin-bottom: 6px;
+    margin: 0;
     font-size: 1.1em;
     line-height: 1.3;
     padding: 0 8px;
@@ -790,8 +819,17 @@ h2 {
     }
 
     .item-card {
-        padding: 10px;
+        padding: 0;
         border-radius: 10px;
+    }
+
+    .item-card-content {
+        padding: 10px 8px 8px;
+    }
+
+    .item-card-qty-stripe {
+        padding: 6px 6px;
+        font-size: 0.78rem;
     }
 
     .item-name {

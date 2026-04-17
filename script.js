@@ -1343,21 +1343,22 @@ function createItemCard(item, listId, isPoppingIn = false) {
     }
 
     const cardContent = document.createElement('div');
-    cardContent.classList.add('item-card-content'); // Wrapper for name/qty
+    cardContent.classList.add('item-card-content');
 
     const itemName = document.createElement('span');
     itemName.classList.add('item-name');
     itemName.textContent = item.name;
     cardContent.appendChild(itemName);
 
-    if (item.quantity) { // Show quantity if it exists (could be 1 or more)
-        const itemQuantity = document.createElement('span');
-        itemQuantity.classList.add('item-quantity');
-        itemQuantity.textContent = ` x${item.quantity}`;
-        cardContent.appendChild(itemQuantity);
-    }
-
     card.appendChild(cardContent);
+
+    if (item.quantity) {
+        const qtyStripe = document.createElement('div');
+        qtyStripe.classList.add('item-card-qty-stripe');
+        qtyStripe.textContent = String(item.quantity);
+        qtyStripe.setAttribute('aria-label', `Quantity ${item.quantity}`);
+        card.appendChild(qtyStripe);
+    }
 
     // --- Controls (No visible controls; Edit via Long Press) ---
     // const cardControls = document.createElement('div');
