@@ -1422,8 +1422,10 @@ function toggleItemDone(listId, itemId) {
         renderItemsForList(listId, itemId);
 
         const justCheckedOff = !wasDone && item.done;
+        const onShoppingTripForThisList = shoppingTripListId === listId;
         if (
             justCheckedOff &&
+            onShoppingTripForThisList &&
             list.items.length > 0 &&
             list.items.every((i) => i.done)
         ) {
