@@ -1485,7 +1485,6 @@ h2 {
 }
 
 #editNameInput,
-#editQtyInput,
 #editCategorySelect {
     width: 100%; /* Make inputs full width */
     padding: 10px;
@@ -1495,6 +1494,66 @@ h2 {
     border-radius: 4px;
     font-size: 1em;
     box-sizing: border-box;
+}
+
+.edit-qty-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: -8px;
+}
+
+.edit-qty-stepper {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid #555;
+    background-color: #3a3a3a;
+}
+
+.edit-qty-stepper #editQtyInput {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 8px;
+    border: none;
+    border-left: 1px solid #555;
+    border-right: 1px solid #555;
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    font-size: 1.05em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+
+.edit-qty-stepper #editQtyInput::-webkit-outer-spin-button,
+.edit-qty-stepper #editQtyInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.qty-step-btn {
+    flex: 0 0 48px;
+    min-width: 48px;
+    padding: 0;
+    border: none;
+    background: rgba(45, 212, 191, 0.14);
+    color: var(--accent-strong);
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s var(--tap), filter 0.15s;
+}
+
+.qty-step-btn:active {
+    filter: brightness(1.15);
+    background: rgba(45, 212, 191, 0.28);
 }
 
 .modal-controls {

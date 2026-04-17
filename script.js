@@ -60,7 +60,8 @@ let knownItems = {};
 // --- Long Press Timer ---
 let pressTimer = null;
 let longPressDetected = false;
-const LONG_PRESS_DURATION = 700; // milliseconds
+/** Long-press to edit item */
+const LONG_PRESS_DURATION = 500; // milliseconds
 
 /** Dropdown sentinel: create list from Manage Items page */
 const NEW_LIST_SELECT_VALUE = '__new_list__';
@@ -2227,6 +2228,17 @@ function hideEditModal() {
      currentlyEditing = null; // Clear reference
 }
 
+/** Step quantity in edit modal: empty field = no quantity; minus from 1 clears */
+function adjustEditItemQuantity(delta) {
+    const input = document.getElementById('editQtyInput');
+    if (!input) return;
+    const raw = input.value.trim();
+    const parsed = raw === '' ? 0 : parseInt(raw, 10);
+    const current = Number.isNaN(parsed) ? 0 : parsed;
+    const next = current + delta;
+    input.value = next < 1 ? '' : String(next);
+}
+
 // --- Helper function to create tabs --- 
 function createTabElement(text, tabId, isActive, isMobile = false) {
     const button = document.createElement('button');
@@ -2399,6 +2411,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editModalCancelBtn) {
         editModalCancelBtn.addEventListener('click', hideEditModal);
     }
+    const editQtyMinusBtn = document.getElementById('editQtyMinusBtn');
+    const editQtyPlusBtn = document.getElementById('editQtyPlusBtn');
+    if (editQtyMinusBtn) editQtyMinusBtn.addEventListener('click', () => adjustEditItemQuantity(-1));
+    if (editQtyPlusBtn) editQtyPlusBtn.addEventListener('click', () => adjustEditItemQuantity(1));
     // Optional: Add Escape key listener to close modal
     if (editItemModal) {
          editItemModal.addEventListener('keydown', (event) => {

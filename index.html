@@ -109,7 +109,12 @@
     <div class="modal-content">
         <h2>Edit Item</h2>
         <input type="text" id="editNameInput" required placeholder="Item Name">
-        <input type="number" id="editQtyInput" placeholder="Quantity (optional)" min="1">
+        <label class="edit-qty-label" for="editQtyInput">Quantity (optional)</label>
+        <div class="edit-qty-stepper">
+            <button type="button" id="editQtyMinusBtn" class="qty-step-btn" aria-label="Decrease quantity">−</button>
+            <input type="number" id="editQtyInput" min="1" inputmode="numeric" autocomplete="off" aria-label="Quantity">
+            <button type="button" id="editQtyPlusBtn" class="qty-step-btn" aria-label="Increase quantity">+</button>
+        </div>
         <select id="editCategorySelect">
             <!-- Options populated by JS -->
         </select>
