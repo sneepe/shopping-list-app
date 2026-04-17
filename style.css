@@ -1500,33 +1500,42 @@ h2 {
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-muted);
-    margin-bottom: -8px;
+    margin-bottom: 6px;
 }
 
+/* − [ qty ] +  — wide touch targets, narrow numeric field (matches main app controls) */
 .edit-qty-stepper {
     display: flex;
+    flex-direction: row;
     align-items: stretch;
+    gap: 12px;
     width: 100%;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    border: 1px solid #555;
-    background-color: #3a3a3a;
 }
 
 .edit-qty-stepper #editQtyInput {
-    flex: 1;
-    min-width: 0;
-    padding: 10px 8px;
-    border: none;
-    border-left: 1px solid #555;
-    border-right: 1px solid #555;
-    background-color: #3a3a3a;
-    color: #e0e0e0;
-    font-size: 1.05em;
+    flex: 0 1 auto;
+    width: clamp(3.25rem, 18vw, 5rem);
+    max-width: 5.5rem;
+    min-width: 3.25rem;
+    min-height: 48px;
+    padding: 8px 4px;
+    box-sizing: border-box;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.28);
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 600;
     text-align: center;
     font-variant-numeric: tabular-nums;
-    box-sizing: border-box;
     -moz-appearance: textfield;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.edit-qty-stepper #editQtyInput:focus {
+    outline: none;
+    border-color: rgba(94, 234, 212, 0.5);
+    box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
 .edit-qty-stepper #editQtyInput::-webkit-outer-spin-button,
@@ -1536,24 +1545,38 @@ h2 {
 }
 
 .qty-step-btn {
-    flex: 0 0 48px;
+    flex: 1 1 0;
     min-width: 48px;
-    padding: 0;
-    border: none;
-    background: rgba(45, 212, 191, 0.14);
+    min-height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--accent-strong);
-    font-size: 1.35rem;
-    font-weight: 700;
+    font-size: 1.45rem;
+    font-weight: 600;
     line-height: 1;
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    transition: background 0.15s var(--tap), filter 0.15s;
+    transition:
+        background 0.18s var(--tap),
+        border-color 0.18s var(--tap),
+        transform 0.12s var(--tap);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qty-step-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 
 .qty-step-btn:active {
-    filter: brightness(1.15);
-    background: rgba(45, 212, 191, 0.28);
+    transform: scale(0.98);
+    background: rgba(94, 234, 212, 0.12);
+    border-color: rgba(94, 234, 212, 0.35);
 }
 
 .modal-controls {
