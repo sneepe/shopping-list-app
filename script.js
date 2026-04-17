@@ -2207,18 +2207,16 @@ document.addEventListener('DOMContentLoaded', () => {
     editModalCancelBtn = document.getElementById('editModalCancelBtn');
 
     // --- Check if essential elements were found ---
-    let essentialElementsFound = true;
-    // REMOVED listNameInput and createListBtn from essential check
     const essentialIDs = ['targetListSelect', 'listInput', 'addItemsBtn', 'categoryList', 'tabContainer', 'listContentContainer', 'categorySettingsContainer', 'addNewCategoryBtn', 'saveSettingsBtn', 'toggleSettingsBtn', 'settingsAreaWrapper', 'hamburgerBtn', 'mobileNavPanel', 'pasteFromAiBtn', 'copyFormatAiBtn'];
-    essentialIDs.forEach(id => {
-        if (!document.getElementById(id)) {
-            console.error(`[DOMContentLoaded] CRITICAL: Essential DOM element with ID '${id}' not found!`); // KEEP Error
-            essentialElementsFound = false;
-        }
+    const missingIds = essentialIDs.filter((id) => !document.getElementById(id));
+    missingIds.forEach((id) => {
+        console.error(`[DOMContentLoaded] CRITICAL: Essential DOM element with ID '${id}' not found!`); // KEEP Error
     });
 
-    if (!essentialElementsFound) {
-        alert("Error initializing the application: Core HTML elements are missing. Please check the HTML structure or report the issue.");
+    if (missingIds.length) {
+        alert(
+            `Error initializing the application: missing HTML elements (${missingIds.join(', ')}). Often caused by an old offline cache or service worker for the wrong site path — try Ctrl+F5, or DevTools → Application → Service Workers → Unregister, then reload.`
+        );
         return; // Stop initialization if core elements are missing
     }
     if (!manageListsTabButton) console.warn("[DOMContentLoaded] Desktop 'Manage Lists' button not found."); // KEEP Warn
@@ -2297,7 +2295,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // console.log("[DOMContentLoaded] Page loaded, attempting to register service worker...");
-            navigator.serviceWorker.register('/sw.js')
+            const swUrl = new URL('sw.js', window.location.href);
+            navigator.serviceWorker.register(swUrl.href)
                 .then(registration => {
                     console.log('[SW] Registration successful, scope is:', registration.scope); // Keep SW logs?
                 })
