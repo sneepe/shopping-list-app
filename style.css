@@ -84,6 +84,28 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
+.app-toast.app-toast--celebrate {
+    font-weight: 700;
+    font-size: 0.98rem;
+    letter-spacing: 0.02em;
+    padding: 16px 26px;
+    max-width: min(420px, calc(100vw - 32px));
+    text-align: center;
+    line-height: 1.35;
+    border-color: rgba(94, 234, 212, 0.45);
+    background: linear-gradient(155deg, rgba(34, 39, 54, 0.98) 0%, rgba(13, 148, 136, 0.32) 55%, rgba(34, 39, 54, 0.96) 100%);
+    box-shadow:
+        0 0 0 1px rgba(45, 212, 191, 0.12),
+        0 14px 48px rgba(45, 212, 191, 0.2),
+        var(--shadow-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-toast {
+        transition: opacity 0.2s ease, visibility 0.2s;
+    }
+}
+
 /* Shopping trip: lock navigation */
 body.shopping-trip-active #tabContainer,
 body.shopping-trip-active #hamburgerBtn {
@@ -1044,7 +1066,10 @@ h2 {
     cursor: pointer;
     z-index: 1001;
     touch-action: manipulation;
-    transition: background 0.2s, transform 0.15s;
+    transition:
+        background 0.2s,
+        transform 0.15s,
+        box-shadow 0.2s;
 }
 
 .hamburger-btn:active {
@@ -1122,11 +1147,18 @@ h2 {
         display: flex;
         align-items: center;
         justify-content: center;
+        position: fixed;
+        z-index: 1002;
+        box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
     }
 
     .container {
         padding-top: 56px;
         border-radius: var(--radius-lg);
+    }
+
+    body {
+        overscroll-behavior-y: contain;
     }
 } 
 

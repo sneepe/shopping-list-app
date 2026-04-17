@@ -739,19 +739,21 @@ function handleDocumentClick(e) {
     }
 }
 
-function showAppToast(message) {
+function showAppToast(message, options = {}) {
     let t = document.getElementById('appToast');
     if (!t) {
         t = document.createElement('div');
         t.id = 'appToast';
-        t.className = 'app-toast';
         t.setAttribute('role', 'status');
         document.body.appendChild(t);
     }
+    const variant = options.variant ? String(options.variant).replace(/[^a-z0-9_-]/gi, '') : '';
+    t.className = 'app-toast' + (variant ? ` app-toast--${variant}` : '');
     t.textContent = message;
     t.classList.add('visible');
     clearTimeout(showAppToast._tid);
-    showAppToast._tid = setTimeout(() => t.classList.remove('visible'), 2200);
+    const ms = typeof options.duration === 'number' ? options.duration : 2200;
+    showAppToast._tid = setTimeout(() => t.classList.remove('visible'), ms);
 }
 
 function handleCopyFormattingForAi() {
@@ -1417,7 +1419,21 @@ function toggleItemDone(listId, itemId) {
         saveState(); 
         
         // Always re-render the list after the state change
-        renderItemsForList(listId, itemId); 
+        renderItemsForList(listId, itemId);
+
+        const justCheckedOff = !wasDone && item.done;
+        if (
+            justCheckedOff &&
+            list.items.length > 0 &&
+            list.items.every((i) => i.done)
+        ) {
+            setTimeout(() => {
+                showAppToast(`Good job — everything on "${list.name}" is checked off!`, {
+                    variant: 'celebrate',
+                    duration: 4200,
+                });
+            }, 120);
+        }
     }, 300); 
 }
 

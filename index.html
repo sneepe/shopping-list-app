@@ -10,10 +10,11 @@
     <meta name="theme-color" content="#090b10">
 </head>
 <body>
+    <!-- Outside .container so fixed/sticky header controls aren’t clipped by overflow -->
+    <button type="button" id="hamburgerBtn" class="hamburger-btn" aria-label="Open menu">&#9776;</button>
+
     <div class="container">
         <h1>Paste & Shop</h1>
-
-        <button id="hamburgerBtn" class="hamburger-btn">&#9776;</button> <!-- Hamburger Icon -->
 
         <div class="tabs desktop-tabs" id="tabContainer">
             <button class="tab-button active" data-tab="inputTab">Manage Items</button>
