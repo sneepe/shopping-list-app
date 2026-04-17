@@ -1464,6 +1464,12 @@ h2 {
     /* Use flex for centering - JS sets display: flex */
 }
 
+/* Finger still down when modal appears (long-press): don’t let lift hit selects/buttons underneath */
+#editItemModal.modal-defer-pointer .modal-content,
+#editItemModal.modal-defer-pointer .modal-content * {
+    pointer-events: none;
+}
+
 .modal-content {
     background-color: #2c2c2c; /* Match container background */
     padding: 25px 30px;

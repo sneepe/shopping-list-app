@@ -61,7 +61,7 @@ let knownItems = {};
 let pressTimer = null;
 let longPressDetected = false;
 /** Long-press to edit item */
-const LONG_PRESS_DURATION = 500; // milliseconds
+const LONG_PRESS_DURATION = 450; // milliseconds
 
 /** Dropdown sentinel: create list from Manage Items page */
 const NEW_LIST_SELECT_VALUE = '__new_list__';
@@ -69,6 +69,10 @@ const NEW_LIST_SELECT_VALUE = '__new_list__';
 /** One list at a time: hide nav, tap-only cards, Undo / Finish */
 let shoppingTripListId = null;
 let lastShoppingUndo = null; // { listId, itemId, wasDoneBefore }
+
+/** After long-press opens edit modal, block overlay close + ignore touches on panel until finger is released */
+let suppressEditModalBackdropCloseUntil = 0;
+let editModalPointerDeferTimer = null;
 
 /** Clipboard text for AI assistants — rebuilt on copy so categories match currentCategoryConfig */
 function buildAiFormattingRulesText() {
@@ -1412,7 +1416,7 @@ function createItemCard(item, listId, isPoppingIn = false) {
                 suppressClearTimer = setTimeout(() => {
                     suppressNextCardClick = false;
                 }, 600);
-                startItemEdit(listId, item.id);
+                startItemEdit(listId, item.id, { deferPointerFromLongPress: true });
             }, LONG_PRESS_DURATION);
         }
     };
@@ -2146,7 +2150,7 @@ let currentlyEditing = null;
 // Global reference to modal elements (assigned in DOMContentLoaded)
 let editItemModal, editNameInput, editQtyInput, editCategorySelect, editModalSaveBtn, editModalCancelBtn;
 
-function startItemEdit(listId, itemId) {
+function startItemEdit(listId, itemId, options = {}) {
     console.log(`[startItemEdit - Modal] Triggered for item ${itemId} in list ${listId}`);
     const list = shoppingLists[listId];
     if (!list) { console.error(`[startItemEdit] List not found: ${listId}`); return; }
@@ -2167,8 +2171,28 @@ function startItemEdit(listId, itemId) {
     // Show the modal (Implementation assumes modal element exists)
     if (editItemModal) {
         editItemModal.style.display = 'flex'; // Or 'block'
-        // Focus first field
-        if(editNameInput) editNameInput.focus();
+        clearTimeout(editModalPointerDeferTimer);
+        if (options.deferPointerFromLongPress) {
+            editItemModal.classList.add('modal-defer-pointer');
+            suppressEditModalBackdropCloseUntil = Date.now() + 400;
+            editModalPointerDeferTimer = setTimeout(() => {
+                editItemModal.classList.remove('modal-defer-pointer');
+                suppressEditModalBackdropCloseUntil = 0;
+                if (editNameInput) {
+                    try {
+                        editNameInput.focus({ preventScroll: true });
+                    } catch (_) {
+                        editNameInput.focus();
+                    }
+                }
+            }, 320);
+        } else if (editNameInput) {
+            try {
+                editNameInput.focus({ preventScroll: true });
+            } catch (_) {
+                editNameInput.focus();
+            }
+        }
     } else {
         console.error("[startItemEdit] Edit modal element not found!");
     }
@@ -2230,8 +2254,12 @@ function handleSaveItemEdit(/* Reads from modal/global state */) {
 // Function to hide the modal
 function hideEditModal() {
      // console.log("[hideEditModal] Hiding modal.");
+     clearTimeout(editModalPointerDeferTimer);
+     editModalPointerDeferTimer = null;
+     suppressEditModalBackdropCloseUntil = 0;
      if (editItemModal) {
          editItemModal.style.display = 'none';
+         editItemModal.classList.remove('modal-defer-pointer');
      }
      currentlyEditing = null; // Clear reference
 }
@@ -2430,11 +2458,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 hideEditModal();
             }
          });
-        // Optional: Close modal on overlay click
+        // Close modal on overlay click (ignore ghost lift after long-press-open)
          editItemModal.addEventListener('click', (event) => {
-            if (event.target === editItemModal) { // Check if click is directly on the overlay
-                hideEditModal();
+            if (event.target !== editItemModal) return;
+            if (Date.now() < suppressEditModalBackdropCloseUntil) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
             }
+            hideEditModal();
         });
     }
 
